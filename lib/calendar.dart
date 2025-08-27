@@ -1,0 +1,387 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:meditation_scheduler/HiveDb.dart';
+import 'package:meditation_scheduler/SettingsHive.dart';
+import 'package:meditation_scheduler/widgets/bottom_sheet_card.dart';
+import 'package:table_calendar/table_calendar.dart';
+
+import 'package:hive_flutter/hive_flutter.dart';
+
+class CalendarPage extends StatefulWidget {
+  const CalendarPage({super.key});
+
+  @override
+  State<CalendarPage> createState() => _CalendarPageState();
+}
+
+// A simple widget to display a progress bar with a label
+
+class _CalendarPageState extends State<CalendarPage> {
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+  Widget buildProgressBar({
+    required String label,
+    required double progress,
+    required BuildContext context,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.bodyLarge),
+        const SizedBox(height: 8),
+        LinearProgressIndicator(
+          value: progress,
+          backgroundColor: const Color.fromARGB(255, 0, 0, 0),
+          valueColor: AlwaysStoppedAnimation<Color>(
+            Theme.of(context).primaryColor,
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  // Get all completed days from Hive
+  Set<DateTime> getCompletedDays() {
+    final completedDays = <DateTime>{};
+
+    for (var key in MeditationDayHiveDB.meditationDays.keys) {
+      final entry = MeditationDayHiveDB.meditationDays.get(
+        key,
+        defaultValue: {'morningCompleted': false, 'eveningCompleted': false},
+      );
+
+      if (entry['morningCompleted'] == true &&
+          entry['eveningCompleted'] == true) {
+        final parsedDate = DateTime.parse(key.toString());
+        completedDays.add(
+          DateTime(parsedDate.year, parsedDate.month, parsedDate.day),
+        );
+      }
+    }
+
+    return completedDays;
+  }
+
+  TimeOfDay intToTimeOfDay(int time) {
+    // Pad with zeros so "930" becomes "0930"
+    String timeStr = time.toString().padLeft(4, '0');
+
+    int hour = int.parse(timeStr.substring(0, 2));
+    int minute = int.parse(timeStr.substring(2, 4));
+
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  double getMonthlyProgress(Set<DateTime> completedDays) {
+    final now = DateTime.now();
+    final int daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    final int completedDaysThisMonth = completedDays
+        .where((date) => date.year == now.year && date.month == now.month)
+        .length;
+
+    if (daysInMonth == 0) {
+      return 0.0;
+    }
+    return completedDaysThisMonth / daysInMonth;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text("Calendar"),
+        backgroundColor: Colors.white,
+      ),
+
+      body: ValueListenableBuilder(
+        valueListenable: MeditationDayHiveDB.meditationDays.listenable(),
+        builder: (context, box, _) {
+          final completedDays = getCompletedDays();
+
+          final monthlyProgress = getMonthlyProgress(completedDays);
+          final progressPercentage = (monthlyProgress * 100).toInt();
+
+          return Flex(
+            direction: Axis.vertical,
+
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20.0,
+                  vertical: 10.0,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Monthly Progress',
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    Text(
+                      '$progressPercentage%',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TableCalendar(
+                calendarStyle: CalendarStyle(
+                  selectedTextStyle: Theme.of(context).textTheme.labelMedium!,
+                ),
+                rowHeight: 60,
+
+                firstDay: DateTime.utc(2020, 1, 1),
+                lastDay: DateTime.utc(2030, 12, 31),
+                focusedDay: _focusedDay,
+                selectedDayPredicate: (day) {
+                  return isSameDay(_selectedDay, day);
+                },
+
+                onDaySelected: (selectedDay, focusedDay) {
+                  setState(() {
+                    _selectedDay = selectedDay;
+                    _focusedDay = focusedDay;
+                  });
+
+                  showModalBottomSheet(
+                    context: context,
+                    barrierColor: Colors.transparent,
+                    isScrollControlled: true,
+                    builder: (context) {
+                      // You'll need to make sure the intl package is imported for DateFormat
+                      final String formattedDate = DateFormat(
+                        'MMMM d, yyyy',
+                      ).format(_focusedDay);
+
+                      return SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.30,
+                        child: Card(
+                          color: const Color.fromARGB(255, 255, 255, 255),
+                          // Set the background color to white
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(30),
+                              topRight: Radius.circular(30),
+                            ),
+                          ),
+
+                          child: Padding(
+                            padding: const EdgeInsets.all(20.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Nicely formatted Date at the top
+                                Text(
+                                  formattedDate,
+                                  style: Theme.of(context).textTheme.labelLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 25,
+                                      ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 20),
+                                // Morning Slot
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Morning Meditation',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelMedium!
+                                              .copyWith(
+                                                fontWeight: FontWeight.w200,
+                                                color: Colors.grey[800],
+                                                fontSize: 20,
+                                              ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          "${intToTimeOfDay(SettingsHiveDB.getMorningTime()[0]).format(context).toLowerCase().replaceAll(" ", '')} - ${intToTimeOfDay(SettingsHiveDB.getMorningTime()[1]).format(context).toLowerCase().replaceAll(" ", '')}",
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.titleSmall,
+                                        ),
+                                      ],
+                                    ),
+                                    MeditationDayHiveDB.getThisDayCompleted(
+                                          DateTime(
+                                            selectedDay.year,
+                                            selectedDay.month,
+                                            selectedDay.day,
+                                          ),
+                                        )[0]
+                                        ? Icon(
+                                            Icons.check_circle_outline,
+                                            color: Colors.green,
+                                          )
+                                        : Column(
+                                            children: [
+                                              Text(
+                                                "⏰",
+                                                style: TextStyle(fontSize: 20),
+                                              ),
+                                              Text(
+                                                "Not Yet Done",
+                                                style: TextStyle(fontSize: 10),
+                                              ),
+                                            ],
+                                          ),
+                                  ],
+                                ),
+                                const Divider(height: 32, thickness: 1),
+                                // Evening Slot
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Evening Meditation',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelMedium!
+                                              .copyWith(
+                                                fontWeight: FontWeight.w200,
+                                                color: Colors.grey[800],
+                                                fontSize: 20,
+                                              ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          "${intToTimeOfDay(SettingsHiveDB.getEveningTime()[0]).format(context).toLowerCase().replaceAll(" ", '')} - ${intToTimeOfDay(SettingsHiveDB.getEveningTime()[1]).format(context).toLowerCase().replaceAll(" ", '')}",
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.titleSmall,
+                                        ),
+                                      ],
+                                    ),
+                                    MeditationDayHiveDB.getThisDayCompleted(
+                                          DateTime(
+                                            selectedDay.year,
+                                            selectedDay.month,
+                                            selectedDay.day,
+                                          ),
+                                        )[1]
+                                        ? Icon(
+                                            Icons.check_circle_outline,
+                                            color: Colors.green,
+                                          )
+                                        : Column(
+                                            children: [
+                                              Text(
+                                                "⏰",
+                                                style: TextStyle(fontSize: 20),
+                                              ),
+                                              Text(
+                                                "Not Yet Done",
+                                                style: TextStyle(fontSize: 10),
+                                              ),
+                                            ],
+                                          ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+                calendarBuilders: CalendarBuilders(
+                  todayBuilder: (context, day, focusedDay) {
+                    return Container(
+                      margin: const EdgeInsets.all(6.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white, // Or any color you prefer
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Theme.of(context).focusColor,
+                          width: 2.0,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${day.day}',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Theme.of(context).focusColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                  selectedBuilder: (context, day, focusedDay) {
+                    return Container(
+                      margin: const EdgeInsets.all(6.0),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).focusColor, // Use your app's primary color
+                        borderRadius: BorderRadius.circular(15.0),
+                        border: Border.all(
+                          color: Theme.of(context).focusColor,
+                          width: 2.0,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${day.day}',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                  defaultBuilder: (context, day, focusedDay) {
+                    // highlight completed days
+                    if (completedDays.contains(
+                      DateTime(day.year, day.month, day.day),
+                    )) {
+                      return Container(
+                        margin: const EdgeInsets.all(6.0),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15.0),
+                        ),
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              '${day.day}',
+                              style: Theme.of(
+                                context,
+                              ).textTheme.labelSmall!.copyWith(),
+                            ),
+                            Text('✅'),
+                          ],
+                        ),
+                      );
+                    }
+                    return null; // default UI
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}

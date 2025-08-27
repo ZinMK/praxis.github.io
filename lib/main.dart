@@ -1,11 +1,26 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:meditation_scheduler/HiveMessages.dart';
+
 import 'package:meditation_scheduler/feed.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+
+  await Hive.openBox("meditation");
+  await Hive.openBox("settings");
+
+  await Hive.openBox("messages");
+  HiveMessagesClass.addMessage(
+    "Welcome to the App! You can add messages for yourself that will appear here randomly.",
+  );
+
+  runApp(ProviderScope(child: const MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -20,7 +35,7 @@ class MyApp extends StatelessWidget {
         buttonTheme: ButtonThemeData(
           buttonColor: const Color.fromARGB(255, 255, 217, 119),
         ),
-        hintColor: Color.fromARGB(255, 254, 180, 63),
+        hintColor: Color.fromARGB(255, 255, 160, 7),
         textTheme: TextTheme(
           labelLarge: GoogleFonts.nunito(
             fontSize: 50,
@@ -39,7 +54,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
         scaffoldBackgroundColor: const Color.fromARGB(255, 255, 254, 243),
-        focusColor: const Color.fromARGB(255, 239, 140, 0),
+        focusColor: const Color.fromARGB(255, 241, 143, 5),
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
       home: LoginPage(),

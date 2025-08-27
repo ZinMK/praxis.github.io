@@ -1,13 +1,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission andriod:name="andriod.permission.POST_NOTIFICATIONS"/>
+    <uses-permission andriod:name="andriod.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission andriod:name="andriod.permission.VIBRATE"/>
+    <uses-permission andriod:name="andriod.permission.ACCESS_NOTIFICATION_POLICY"/>
+   
     <application
-        android:label="meditation_scheduler"
+        android:label="Praxis"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:taskAffinity=""
+            android:taskAffinity="" 
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
@@ -31,6 +36,22 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
+    <receiver
+        android:exported= "false"
+        android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+    <receiver
+        android:exported= "false"
+        android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" >
+        <intent-filter>
+            <action android-name="android.intent.action.BOOT_COMPLETED"/>
+            <action androidname="android.intent.action.MY_PACKAGE_REPLACED"/> 
+            <action android.name="android.intent.action.QUICKBOOT_POWERON" />
+            <action androidname="com.htc.intent.action.QUICKBOOT_POWERON"/>
+        </intent-filter>
+    </receiver>
+    <receiver
+        android:exported="false"
+        android:name="com.dexterous.flutterlocalnotifications.FlutterLocalNotificationsReceiver"/>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.

@@ -1,30 +1,54 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/adapters.dart';
+import 'package:meditation_scheduler/HiveDb.dart';
+import 'package:meditation_scheduler/Provider/meditation_provider.dart';
+import 'package:meditation_scheduler/SettingsHive.dart';
 import 'package:meditation_scheduler/TimerPage.dart';
 import 'package:meditation_scheduler/widgets/elevatedbutton.dart';
 
-class TimerBar extends StatefulWidget {
-  const TimerBar({super.key});
+class TimerBar extends ConsumerStatefulWidget {
+  MeditationSlot meditationslot;
+
+  TimerBar({super.key, required this.meditationslot});
 
   @override
-  State<TimerBar> createState() => _TimerBarState();
+  ConsumerState<TimerBar> createState() => _TimerBarState();
 }
 
-class _TimerBarState extends State<TimerBar> {
-  bool isCompleted = false;
-  TimeOfDay fromTime = const TimeOfDay(hour: 10, minute: 0);
-  TimeOfDay toTime = const TimeOfDay(hour: 14, minute: 0);
+TimeOfDay intToTimeOfDay(int time) {
+  // Pad with zeros so "930" becomes "0930"
+  String timeStr = time.toString().padLeft(4, '0');
 
-  void markAsDone() {
-    setState(() {
-      isCompleted = true;
-    });
+  int hour = int.parse(timeStr.substring(0, 2));
+  int minute = int.parse(timeStr.substring(2, 4));
+
+  return TimeOfDay(hour: hour, minute: minute);
+}
+
+class _TimerBarState extends ConsumerState<TimerBar> {
+  late TimeOfDay fromTime;
+  late TimeOfDay toTime;
+  @override
+  void initState() {
+    super.initState();
   }
 
   Duration get duration {
     final from = DateTime(2025, 1, 1, fromTime.hour, fromTime.minute);
     final to = DateTime(2025, 1, 1, toTime.hour, toTime.minute);
     return to.difference(from);
+  }
+
+  void markAsDone() {
+    setState(() {
+      if (widget.meditationslot == MeditationSlot.morning) {
+        MeditationDayHiveDB.updateMorningAsComplete(duration.inMinutes);
+      } else {
+        MeditationDayHiveDB.updateEveningAsComplete(duration.inMinutes);
+      }
+    });
   }
 
   Future _openEditSheet() async {
@@ -75,6 +99,23 @@ class _TimerBarState extends State<TimerBar> {
                               setState(() {
                                 fromTime = tempFrom;
                                 toTime = tempTo;
+
+                                if (widget.meditationslot ==
+                                    MeditationSlot.morning) {
+                                  SettingsHiveDB.updateMorningStartTime(
+                                    fromTime.hour * 100 + fromTime.minute,
+                                  );
+                                  SettingsHiveDB.updateMorningEndTime(
+                                    toTime!.hour * 100 + toTime!.minute,
+                                  );
+                                } else {
+                                  SettingsHiveDB.updateEveningStartTime(
+                                    fromTime.hour * 100 + fromTime.minute,
+                                  );
+                                  SettingsHiveDB.updateEveningEndTime(
+                                    toTime!.hour * 100 + toTime!.minute,
+                                  );
+                                }
                               });
                               Navigator.pop(context);
                             },
@@ -134,93 +175,16 @@ class _TimerBarState extends State<TimerBar> {
     );
   }
 
-  // Future<void> _openEditSheet() async {
-  //   await showModalBottomSheet(
-  //     context: context,
-  //     isScrollControlled: true,
-  //     shape: const RoundedRectangleBorder(
-  //       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-  //     ),
-  //     builder: (context) {
-  //       TimeOfDay tempFrom = fromTime;
-  //       TimeOfDay tempTo = toTime;
-
-  //       return Padding(
-  //         padding: MediaQuery.of(context).viewInsets,
-  //         child: StatefulBuilder(
-  //           builder: (context, setModalState) {
-  //             return Container(
-  //               padding: const EdgeInsets.all(20),
-  //               child: Column(
-  //                 mainAxisSize: MainAxisSize.min,
-  //                 children: [
-  //                   const Text(
-  //                     "Adjust Meditation Time",
-  //                     style: TextStyle(
-  //                       fontSize: 18,
-  //                       fontWeight: FontWeight.bold,
-  //                     ),
-  //                   ),
-  //                   const SizedBox(height: 20),
-  //                   Row(
-  //                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //                     children: [
-  //                       Text("From: ${tempFrom.format(context)}"),
-  //                       ElevatedButton(
-  //                         onPressed: () async {
-  //                           final picked = await showTimePicker(
-  //                             context: context,
-  //                             initialTime: tempFrom,
-  //                           );
-  //                           if (picked != null) {
-  //                             setModalState(() => tempFrom = picked);
-  //                           }
-  //                         },
-  //                         child: const Text("Pick"),
-  //                       ),
-  //                     ],
-  //                   ),
-  //                   Row(
-  //                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //                     children: [
-  //                       Text("To: ${tempTo.format(context)}"),
-  //                       ElevatedButton(
-  //                         onPressed: () async {
-  //                           final picked = await showTimePicker(
-  //                             context: context,
-  //                             initialTime: tempTo,
-  //                           );
-  //                           if (picked != null) {
-  //                             setModalState(() => tempTo = picked);
-  //                           }
-  //                         },
-  //                         child: const Text("Pick"),
-  //                       ),
-  //                     ],
-  //                   ),
-  //                   const SizedBox(height: 20),
-  //                   ElevatedButton(
-  //                     onPressed: () {
-  //                       setState(() {
-  //                         fromTime = tempFrom;
-  //                         toTime = tempTo;
-  //                       });
-  //                       Navigator.pop(context);
-  //                     },
-  //                     child: const Text("Save"),
-  //                   ),
-  //                 ],
-  //               ),
-  //             );
-  //           },
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
-
   @override
   Widget build(BuildContext context) {
+    bool iscompleted;
+
+    if (widget.meditationslot == MeditationSlot.morning) {
+      iscompleted = MeditationDayHiveDB.getTodayMorningComplete();
+    } else {
+      iscompleted = MeditationDayHiveDB.getTodayEveningComplete();
+    }
+
     return GestureDetector(
       onLongPress: _openEditSheet,
       child: Container(
@@ -236,12 +200,29 @@ class _TimerBarState extends State<TimerBar> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "${fromTime.format(context).toLowerCase().replaceAll(" ", '')} - ${toTime.format(context).toLowerCase().replaceAll(" ", '')}",
-                style: Theme.of(
-                  context,
-                ).textTheme.labelMedium!.copyWith(color: Colors.white),
+              ValueListenableBuilder(
+                valueListenable: Hive.box('settings').listenable(),
+                builder: (context, value, child) {
+                  if (widget.meditationslot == MeditationSlot.morning) {
+                    fromTime = intToTimeOfDay(
+                      SettingsHiveDB.getMorningTime()[0],
+                    );
+                    toTime = intToTimeOfDay(SettingsHiveDB.getMorningTime()[1]);
+                  } else {
+                    fromTime = intToTimeOfDay(
+                      SettingsHiveDB.getEveningTime()[0],
+                    );
+                    toTime = intToTimeOfDay(SettingsHiveDB.getEveningTime()[1]);
+                  }
+                  return Text(
+                    "${fromTime.format(context).toLowerCase().replaceAll(" ", '')} - ${toTime.format(context).toLowerCase().replaceAll(" ", '')}",
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelMedium!.copyWith(color: Colors.white),
+                  );
+                },
               ),
+
               Expanded(
                 child: Row(
                   children: [
@@ -249,7 +230,7 @@ class _TimerBarState extends State<TimerBar> {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 1),
                         curve: Curves.easeInOut,
-                        width: isCompleted ? 200 : 120,
+                        width: iscompleted ? 200 : 120,
                         child: ElevatedButton(
                           style: ButtonStyle(
                             elevation: const WidgetStatePropertyAll(0),
@@ -260,12 +241,113 @@ class _TimerBarState extends State<TimerBar> {
                               const Color.fromARGB(255, 249, 223, 156),
                             ),
                           ),
-                          onPressed: markAsDone,
+                          onPressed: () {
+                            if (iscompleted) {
+                              showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return AlertDialog(
+                                    backgroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    title: Text(
+                                      "Meditation Completed",
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                    content: Text(
+                                      "This meditation session is marked as complete. Do you want to undo?",
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(fontSize: 16, height: 1.4),
+                                    ),
+                                    actionsPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    actions: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceEvenly,
+                                        children: [
+                                          TextButton(
+                                            style: TextButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 12,
+                                                  ),
+                                            ),
+                                            onPressed: () {
+                                              Navigator.of(
+                                                context,
+                                              ).pop(); // just close
+                                            },
+                                            child: const Text(
+                                              "Back",
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                          TextButton(
+                                            style: TextButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 12,
+                                                  ),
+                                            ),
+                                            onPressed: () {
+                                              // Undo completion
+                                              setState(() {
+                                                if (widget.meditationslot ==
+                                                    MeditationSlot.morning) {
+                                                  MeditationDayHiveDB.undoSlot(
+                                                    true,
+                                                  );
+                                                } else {
+                                                  MeditationDayHiveDB.undoSlot(
+                                                    false,
+                                                  );
+                                                }
+                                              });
+                                              Navigator.of(
+                                                context,
+                                              ).pop(); // close dialog
+                                            },
+                                            child: const Text(
+                                              "UNDO",
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.red,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            } else {
+                              markAsDone();
+                            }
+                          },
+
                           child: AnimatedSwitcher(
                             duration: const Duration(milliseconds: 1),
                             child: Text(
-                              isCompleted ? "Completed 🎉" : "Mark as done ✅",
-                              key: ValueKey(isCompleted),
+                              iscompleted ? "Completed ✅" : "Mark as done ✅",
+                              key: ValueKey(iscompleted),
                               style: Theme.of(context).textTheme.labelSmall!
                                   .copyWith(
                                     color: const Color.fromARGB(255, 92, 7, 1),
@@ -276,7 +358,7 @@ class _TimerBarState extends State<TimerBar> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    !isCompleted
+                    !iscompleted
                         ? Expanded(
                             child: ElevatedButton_widget(
                               input: "Start",
@@ -289,7 +371,10 @@ class _TimerBarState extends State<TimerBar> {
                                           context,
                                           animation,
                                           secondaryAnimation,
-                                        ) => TimerPage(duration: duration),
+                                        ) => TimerPage(
+                                          duration: duration,
+                                          slot: widget.meditationslot,
+                                        ),
                                     transitionsBuilder:
                                         (
                                           context,
@@ -306,7 +391,7 @@ class _TimerBarState extends State<TimerBar> {
                                       milliseconds: 1000,
                                     ),
                                   ),
-                                ).then((_) => markAsDone());
+                                );
                               },
                             ),
                           )
