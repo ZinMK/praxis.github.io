@@ -1,6 +1,6 @@
 # Privacy Policy for Praxis
 
-**Effective Date:** Today
+**Effective Date:** Aug-27-2025
 
 Praxis ("the App") is a meditation scheduler app designed to help you plan and track your daily Vipassana meditation sittings. We respect your privacy and are committed to protecting it. This Privacy Policy explains our approach.
 
