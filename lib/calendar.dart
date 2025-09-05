@@ -73,6 +73,44 @@ class _CalendarPageState extends State<CalendarPage> {
     return TimeOfDay(hour: hour, minute: minute);
   }
 
+  // Get meditation data for a specific day
+  Map<dynamic, dynamic> getDayMeditationData(DateTime day) {
+    final dateKey = DateTime(day.year, day.month, day.day).toIso8601String();
+
+    return MeditationDayHiveDB.meditationDays.get(
+      dateKey,
+      defaultValue: {
+        'morningCompleted': false,
+        'eveningCompleted': false,
+        'morningDuration': 0,
+        'eveningDuration': 0,
+        'morningCompletionTime': null,
+        'eveningCompletionTime': null,
+      },
+    );
+  }
+
+  // Format duration in minutes to a readable string
+  String formatDuration(int minutes) {
+    if (minutes == 0) return 'Not set';
+    if (minutes < 60) return '${minutes}m';
+    final hours = minutes ~/ 60;
+    final remainingMinutes = minutes % 60;
+    if (remainingMinutes == 0) return '${hours}h';
+    return '${hours}h ${remainingMinutes}m';
+  }
+
+  // Format completion time
+  String formatCompletionTime(String? completionTime) {
+    if (completionTime == null) return '';
+    try {
+      final dateTime = DateTime.parse(completionTime);
+      return DateFormat('h:mm a').format(dateTime);
+    } catch (e) {
+      return '';
+    }
+  }
+
   double getMonthlyProgress(Set<DateTime> completedDays) {
     final now = DateTime.now();
     final int daysInMonth = DateTime(now.year, now.month + 1, 0).day;
@@ -91,7 +129,13 @@ class _CalendarPageState extends State<CalendarPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text("Calendar"),
+        title: Text(
+          "Calendar",
+          style: Theme.of(
+            context,
+          ).textTheme.labelMedium!.copyWith(color: Colors.grey[800]),
+        ),
+
         backgroundColor: Colors.white,
       ),
 
@@ -117,12 +161,16 @@ class _CalendarPageState extends State<CalendarPage> {
                   children: [
                     Text(
                       'Monthly Progress',
-                      style: Theme.of(context).textTheme.bodyLarge,
+                      style: Theme.of(context).textTheme.labelMedium!.copyWith(
+                        color: Colors.grey[800],
+                        fontSize: 20,
+                      ),
                     ),
                     Text(
                       '$progressPercentage%',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.bold,
+                        color: const Color.fromARGB(255, 255, 106, 0),
                       ),
                     ),
                   ],
@@ -152,79 +200,141 @@ class _CalendarPageState extends State<CalendarPage> {
                     barrierColor: Colors.transparent,
                     isScrollControlled: true,
                     builder: (context) {
-                      // You'll need to make sure the intl package is imported for DateFormat
                       final String formattedDate = DateFormat(
                         'MMMM d, yyyy',
                       ).format(_focusedDay);
 
+                      // Get actual meditation data for the selected day
+                      final dayData = getDayMeditationData(selectedDay);
+                      final isToday =
+                          selectedDay.year == DateTime.now().year &&
+                          selectedDay.month == DateTime.now().month &&
+                          selectedDay.day == DateTime.now().day;
+
                       return SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.30,
+                        height: MediaQuery.of(context).size.height * 0.45,
                         child: Card(
                           color: const Color.fromARGB(255, 255, 255, 255),
-                          // Set the background color to white
                           shape: const RoundedRectangleBorder(
                             borderRadius: BorderRadius.only(
                               topLeft: Radius.circular(30),
                               topRight: Radius.circular(30),
                             ),
                           ),
-
                           child: Padding(
                             padding: const EdgeInsets.all(20.0),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Nicely formatted Date at the top
-                                Text(
-                                  formattedDate,
-                                  style: Theme.of(context).textTheme.labelLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 25,
+                                // Date header with today indicator
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        formattedDate,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelLarge
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 25,
+                                            ),
                                       ),
-                                  textAlign: TextAlign.center,
+                                    ),
+                                    if (isToday)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context).primaryColor,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'TODAY',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                                 const SizedBox(height: 20),
-                                // Morning Slot
+
+                                // Morning Slot with actual duration
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Morning Meditation',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .labelMedium!
-                                              .copyWith(
-                                                fontWeight: FontWeight.w200,
-                                                color: Colors.grey[800],
-                                                fontSize: 20,
-                                              ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          "${intToTimeOfDay(SettingsHiveDB.getMorningTime()[0]).format(context).toLowerCase().replaceAll(" ", '')} - ${intToTimeOfDay(SettingsHiveDB.getMorningTime()[1]).format(context).toLowerCase().replaceAll(" ", '')}",
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.titleSmall,
-                                        ),
-                                      ],
-                                    ),
-                                    MeditationDayHiveDB.getThisDayCompleted(
-                                          DateTime(
-                                            selectedDay.year,
-                                            selectedDay.month,
-                                            selectedDay.day,
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Morning Meditation',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelMedium!
+                                                .copyWith(
+                                                  fontWeight: FontWeight.w200,
+                                                  color: Colors.grey[800],
+                                                  fontSize: 20,
+                                                ),
                                           ),
-                                        )[0]
+                                          const SizedBox(height: 4),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              if (dayData['morningDuration'] >
+                                                  0) ...[
+                                                Text(
+                                                  ' ${formatDuration(dayData['morningDuration'])} sitting completed at ${formatCompletionTime(dayData['morningCompletionTime'])}',
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .titleSmall
+                                                      ?.copyWith(
+                                                        color:
+                                                            const Color.fromARGB(
+                                                              255,
+                                                              58,
+                                                              165,
+                                                              61,
+                                                            ),
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                ),
+                                              ] else ...[
+                                                Text(
+                                                  'Default: ${intToTimeOfDay(SettingsHiveDB.getMorningTime()[0]).format(context).toLowerCase().replaceAll(" ", '')} - ${intToTimeOfDay(SettingsHiveDB.getMorningTime()[1]).format(context).toLowerCase().replaceAll(" ", '')}',
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .titleSmall
+                                                      ?.copyWith(
+                                                        color: Colors.grey[600],
+                                                        fontWeight:
+                                                            FontWeight.normal,
+                                                      ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    dayData['morningCompleted']
                                         ? Icon(
                                             Icons.check_circle_outline,
                                             color: Colors.green,
+                                            size: 28,
                                           )
                                         : Column(
                                             children: [
@@ -233,53 +343,83 @@ class _CalendarPageState extends State<CalendarPage> {
                                                 style: TextStyle(fontSize: 20),
                                               ),
                                               Text(
-                                                "Not Yet Done",
+                                                "Not Done",
                                                 style: TextStyle(fontSize: 10),
                                               ),
                                             ],
                                           ),
                                   ],
                                 ),
+
                                 const Divider(height: 32, thickness: 1),
-                                // Evening Slot
+
+                                // Evening Slot with actual duration
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Evening Meditation',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .labelMedium!
-                                              .copyWith(
-                                                fontWeight: FontWeight.w200,
-                                                color: Colors.grey[800],
-                                                fontSize: 20,
-                                              ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          "${intToTimeOfDay(SettingsHiveDB.getEveningTime()[0]).format(context).toLowerCase().replaceAll(" ", '')} - ${intToTimeOfDay(SettingsHiveDB.getEveningTime()[1]).format(context).toLowerCase().replaceAll(" ", '')}",
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.titleSmall,
-                                        ),
-                                      ],
-                                    ),
-                                    MeditationDayHiveDB.getThisDayCompleted(
-                                          DateTime(
-                                            selectedDay.year,
-                                            selectedDay.month,
-                                            selectedDay.day,
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Evening Meditation',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelMedium!
+                                                .copyWith(
+                                                  fontWeight: FontWeight.w200,
+                                                  color: Colors.grey[800],
+                                                  fontSize: 20,
+                                                ),
                                           ),
-                                        )[1]
+                                          const SizedBox(height: 4),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              if (dayData['eveningDuration'] >
+                                                  0) ...[
+                                                Text(
+                                                  '${formatDuration(dayData['eveningDuration'])} sitting completed at ${formatCompletionTime(dayData['eveningCompletionTime'])}',
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .titleSmall
+                                                      ?.copyWith(
+                                                        color: Color.fromARGB(
+                                                          255,
+                                                          58,
+                                                          165,
+                                                          61,
+                                                        ),
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                ),
+                                              ] else ...[
+                                                Text(
+                                                  'Default: ${intToTimeOfDay(SettingsHiveDB.getEveningTime()[0]).format(context).toLowerCase().replaceAll(" ", '')} - ${intToTimeOfDay(SettingsHiveDB.getEveningTime()[1]).format(context).toLowerCase().replaceAll(" ", '')}',
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .titleSmall
+                                                      ?.copyWith(
+                                                        color: Colors.grey[600],
+                                                        fontWeight:
+                                                            FontWeight.normal,
+                                                      ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    dayData['eveningCompleted']
                                         ? Icon(
                                             Icons.check_circle_outline,
                                             color: Colors.green,
+                                            size: 28,
                                           )
                                         : Column(
                                             children: [
@@ -288,13 +428,17 @@ class _CalendarPageState extends State<CalendarPage> {
                                                 style: TextStyle(fontSize: 20),
                                               ),
                                               Text(
-                                                "Not Yet Done",
+                                                "Not Done",
                                                 style: TextStyle(fontSize: 10),
                                               ),
                                             ],
                                           ),
                                   ],
                                 ),
+
+                                const SizedBox(height: 16),
+
+                                // Summary section
                               ],
                             ),
                           ),

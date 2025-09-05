@@ -28,6 +28,8 @@ class MeditationDayHiveDB {
         'eveningCompleted': false,
         'morningDuration': 0,
         'eveningDuration': 0,
+        'morningCompletionTime': null,
+        'eveningCompletionTime': null,
       },
     )['morningCompleted'];
   }
@@ -43,6 +45,8 @@ class MeditationDayHiveDB {
           'eveningCompleted': false,
           'morningDuration': 0,
           'eveningDuration': 0,
+          'morningCompletionTime': null,
+          'eveningCompletionTime': null,
         },
       )['morningCompleted'],
     );
@@ -54,6 +58,8 @@ class MeditationDayHiveDB {
           'eveningCompleted': false,
           'morningDuration': 0,
           'eveningDuration': 0,
+          'morningCompletionTime': null,
+          'eveningCompletionTime': null,
         },
       )['eveningCompleted'],
     );
@@ -66,6 +72,8 @@ class MeditationDayHiveDB {
           'eveningCompleted': false,
           'morningDuration': 0,
           'eveningDuration': 0,
+          'morningCompletionTime': null,
+          'eveningCompletionTime': null,
         },
       )['morningCompleted'],
       meditationDays.get(
@@ -75,6 +83,8 @@ class MeditationDayHiveDB {
           'eveningCompleted': false,
           'morningDuration': 0,
           'eveningDuration': 0,
+          'morningCompletionTime': null,
+          'eveningCompletionTime': null,
         },
       )['eveningCompleted'],
     ];
@@ -88,11 +98,13 @@ class MeditationDayHiveDB {
         'eveningCompleted': false,
         'morningDuration': 0,
         'eveningDuration': 0,
+        'morningCompletionTime': null,
+        'eveningCompletionTime': null,
       },
     )['eveningCompleted'];
   }
 
-  static void updateMorningAsComplete(int duration) async {
+  static Future<void> updateMorningAsComplete(int duration) async {
     Map<dynamic, dynamic> entry = await meditationDays.get(
       _key,
       defaultValue: {
@@ -100,15 +112,18 @@ class MeditationDayHiveDB {
         'eveningCompleted': false,
         'morningDuration': 0,
         'eveningDuration': 0,
+        'morningCompletionTime': null,
+        'eveningCompletionTime': null,
       },
     );
     entry['morningCompleted'] = true;
     entry['morningDuration'] = duration;
+    entry['morningCompletionTime'] = DateTime.now().toIso8601String();
     await meditationDays.put(_key, entry);
     print('morning Updated' + entry.toString());
   }
 
-  static void updateEveningAsComplete(int duration) async {
+  static Future<void> updateEveningAsComplete(int duration) async {
     Map<dynamic, dynamic> entry = await meditationDays.get(
       _key,
       defaultValue: {
@@ -116,10 +131,13 @@ class MeditationDayHiveDB {
         'eveningCompleted': false,
         'morningDuration': 0,
         'eveningDuration': 0,
+        'morningCompletionTime': null,
+        'eveningCompletionTime': null,
       },
     );
     entry['eveningCompleted'] = true;
     entry['eveningDuration'] = duration;
+    entry['eveningCompletionTime'] = DateTime.now().toIso8601String();
     await meditationDays.put(_key, entry);
     print('Evening Updated' + entry.toString());
   }
@@ -139,7 +157,7 @@ class MeditationDayHiveDB {
     return sumMinutes;
   }
 
-  static void undoSlot(bool morning) async {
+  static Future<void> undoSlot(bool morning) async {
     Map<dynamic, dynamic> entry = await meditationDays.get(
       _key,
       defaultValue: {
@@ -147,15 +165,19 @@ class MeditationDayHiveDB {
         'eveningCompleted': false,
         'morningDuration': 0,
         'eveningDuration': 0,
+        'morningCompletionTime': null,
+        'eveningCompletionTime': null,
       },
     );
 
     if (morning) {
       entry['morningCompleted'] = false;
       entry['morningDuration'] = 0;
+      entry['morningCompletionTime'] = null;
     } else {
       entry['eveningCompleted'] = false;
       entry['eveningDuration'] = 0;
+      entry['eveningCompletionTime'] = null;
     }
 
     await meditationDays.put(_key, entry);

@@ -192,6 +192,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                           context: context,
                           builder: (BuildContext context) {
                             return AlertDialog(
+                              shadowColor: Colors.white,
                               backgroundColor: Colors.white,
                               title: const Text('Add a Message'),
 
@@ -216,7 +217,12 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                                             .textTheme
                                             .labelMedium!
                                             .copyWith(
-                                              color: Colors.black,
+                                              color: const Color.fromARGB(
+                                                255,
+                                                90,
+                                                90,
+                                                90,
+                                              ),
                                               fontSize: 18,
                                             ),
                                       ),
@@ -231,10 +237,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                                         style: Theme.of(context)
                                             .textTheme
                                             .labelMedium!
-                                            .copyWith(
-                                              color: Colors.black,
-                                              fontSize: 18,
-                                            ),
+                                            .copyWith(fontSize: 18),
                                       ),
                                       onPressed: () {
                                         if (_messageController

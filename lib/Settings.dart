@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 import 'package:meditation_scheduler/SettingsHive.dart';
+import 'package:meditation_scheduler/services/notification_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -38,7 +39,7 @@ class _SettingsPageState extends State<SettingsPage> {
   };
 
   String? _selectedSound = SettingsHiveDB.getTimerSound();
-  bool _remindersEnabled = true;
+  bool _remindersEnabled = SettingsHiveDB.getNotifications();
 
   late TimeOfDayRange _defaultScheduleMorning = TimeOfDayRange(
     start: intToTimeOfDay(SettingsHiveDB.getMorningTime()[0]),
@@ -120,17 +121,6 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
-  void _pausePreview() async {
-    await _audioPlayer.pause();
-    setState(() {
-      _isPlaying = false;
-    });
-  }
-
-  void _seekAudio(double value) async {
-    await _audioPlayer.seek(Duration(seconds: value.toInt()));
-  }
-
   void _showSoundPicker() {
     showCupertinoModalPopup(
       context: context,
@@ -171,131 +161,131 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  void _showTimePicker(String day) {
-    final initialStart = _schedule[day]!.start;
-    final initialEnd = _schedule[day]!.end;
-    TimeOfDay? tempStart = initialStart;
-    TimeOfDay? tempEnd = initialEnd;
+  // void _showTimePicker(String day) {
+  //   final initialStart = _schedule[day]!.start;
+  //   final initialEnd = _schedule[day]!.end;
+  //   TimeOfDay? tempStart = initialStart;
+  //   TimeOfDay? tempEnd = initialEnd;
 
-    showCupertinoModalPopup(
-      context: context,
-      builder: (context) => Material(
-        child: Container(
-          height: 350, // Increased height for larger pickers
-          color: CupertinoColors.systemBackground.resolveFrom(context),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  "Set $day Schedule",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: CupertinoColors.label.resolveFrom(context),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Text(
-                            "Start",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: CupertinoColors.label.resolveFrom(context),
-                            ),
-                          ),
-                          Expanded(
-                            child: CupertinoDatePicker(
-                              mode: CupertinoDatePickerMode.time,
-                              initialDateTime: DateTime(
-                                2023,
-                                1,
-                                1,
-                                initialStart.hour,
-                                initialStart.minute,
-                              ),
-                              onDateTimeChanged: (val) {
-                                tempStart = TimeOfDay(
-                                  hour: val.hour,
-                                  minute: val.minute,
-                                );
-                              },
-                              itemExtent: 48, // Larger item extent
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Text(
-                            "End",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: CupertinoColors.label.resolveFrom(context),
-                            ),
-                          ),
-                          Expanded(
-                            child: CupertinoDatePicker(
-                              mode: CupertinoDatePickerMode.time,
-                              initialDateTime: DateTime(
-                                2023,
-                                1,
-                                1,
-                                initialEnd.hour,
-                                initialEnd.minute,
-                              ),
-                              onDateTimeChanged: (val) {
-                                tempEnd = TimeOfDay(
-                                  hour: val.hour,
-                                  minute: val.minute,
-                                );
-                              },
-                              itemExtent: 48, // Larger item extent
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    CupertinoButton(
-                      child: const Text("Cancel"),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    CupertinoButton(
-                      child: const Text("Save"),
-                      onPressed: () {
-                        setState(() {
-                          _schedule[day] = TimeOfDayRange(
-                            start: tempStart!,
-                            end: tempEnd!,
-                          );
-                        });
-                        Navigator.pop(context);
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  //   showCupertinoModalPopup(
+  //     context: context,
+  //     builder: (context) => Material(
+  //       child: Container(
+  //         height: 350, // Increased height for larger pickers
+  //         color: CupertinoColors.systemBackground.resolveFrom(context),
+  //         child: Column(
+  //           children: [
+  //             Padding(
+  //               padding: const EdgeInsets.all(8.0),
+  //               child: Text(
+  //                 "Set $day Schedule",
+  //                 style: TextStyle(
+  //                   fontSize: 18,
+  //                   fontWeight: FontWeight.bold,
+  //                   color: CupertinoColors.label.resolveFrom(context),
+  //                 ),
+  //               ),
+  //             ),
+  //             Expanded(
+  //               child: Row(
+  //                 children: [
+  //                   Expanded(
+  //                     child: Column(
+  //                       children: [
+  //                         Text(
+  //                           "Start",
+  //                           style: TextStyle(
+  //                             fontSize: 16,
+  //                             color: CupertinoColors.label.resolveFrom(context),
+  //                           ),
+  //                         ),
+  //                         Expanded(
+  //                           child: CupertinoDatePicker(
+  //                             mode: CupertinoDatePickerMode.time,
+  //                             initialDateTime: DateTime(
+  //                               2023,
+  //                               1,
+  //                               1,
+  //                               initialStart.hour,
+  //                               initialStart.minute,
+  //                             ),
+  //                             onDateTimeChanged: (val) {
+  //                               tempStart = TimeOfDay(
+  //                                 hour: val.hour,
+  //                                 minute: val.minute,
+  //                               );
+  //                             },
+  //                             itemExtent: 48, // Larger item extent
+  //                           ),
+  //                         ),
+  //                       ],
+  //                     ),
+  //                   ),
+  //                   Expanded(
+  //                     child: Column(
+  //                       children: [
+  //                         Text(
+  //                           "End",
+  //                           style: TextStyle(
+  //                             fontSize: 16,
+  //                             color: CupertinoColors.label.resolveFrom(context),
+  //                           ),
+  //                         ),
+  //                         Expanded(
+  //                           child: CupertinoDatePicker(
+  //                             mode: CupertinoDatePickerMode.time,
+  //                             initialDateTime: DateTime(
+  //                               2023,
+  //                               1,
+  //                               1,
+  //                               initialEnd.hour,
+  //                               initialEnd.minute,
+  //                             ),
+  //                             onDateTimeChanged: (val) {
+  //                               tempEnd = TimeOfDay(
+  //                                 hour: val.hour,
+  //                                 minute: val.minute,
+  //                               );
+  //                             },
+  //                             itemExtent: 48, // Larger item extent
+  //                           ),
+  //                         ),
+  //                       ],
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //             Padding(
+  //               padding: const EdgeInsets.all(8.0),
+  //               child: Row(
+  //                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  //                 children: [
+  //                   CupertinoButton(
+  //                     child: const Text("Cancel"),
+  //                     onPressed: () => Navigator.pop(context),
+  //                   ),
+  //                   CupertinoButton(
+  //                     child: const Text("Save"),
+  //                     onPressed: () {
+  //                       setState(() {
+  //                         _schedule[day] = TimeOfDayRange(
+  //                           start: tempStart!,
+  //                           end: tempEnd!,
+  //                         );
+  //                       });
+  //                       Navigator.pop(context);
+  //                     },
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   _showDefaultTimePicker(bool isMorning) {
     final initialStart = isMorning
@@ -411,12 +401,12 @@ class _SettingsPageState extends State<SettingsPage> {
                       child: const Text("Save"),
                       onPressed: () {
                         setState(() {
-                          _defaultScheduleMorning = TimeOfDayRange(
-                            start: tempStart!,
-                            end: tempEnd!,
-                          );
-
                           if (isMorning) {
+                            _defaultScheduleMorning = TimeOfDayRange(
+                              start: tempStart!,
+                              end: tempEnd!,
+                            );
+
                             SettingsHiveDB.updateMorningStartTime(
                               tempStart!.hour * 100 + tempStart!.minute,
                             );
@@ -425,6 +415,11 @@ class _SettingsPageState extends State<SettingsPage> {
                               tempEnd!.hour * 100 + tempEnd!.minute,
                             );
                           } else {
+                            _defaultScheduleEvening = TimeOfDayRange(
+                              start: tempStart!,
+                              end: tempEnd!,
+                            );
+
                             SettingsHiveDB.updateEveningStartTime(
                               tempStart!.hour * 100 + tempStart!.minute,
                             );
@@ -432,6 +427,11 @@ class _SettingsPageState extends State<SettingsPage> {
                             SettingsHiveDB.updateEveningEndTime(
                               tempEnd!.hour * 100 + tempEnd!.minute,
                             );
+                          }
+
+                          // Reschedule daily reminders with new times
+                          if (_remindersEnabled) {
+                            NotificationService().scheduleDailyReminders();
                           }
                         });
                         Navigator.pop(context);
@@ -527,9 +527,16 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     trailing: CupertinoSwitch(
                       value: _remindersEnabled,
-
-                      onChanged: (val) {
+                      onChanged: (val) async {
                         setState(() => _remindersEnabled = val);
+                        SettingsHiveDB.updateNotifications(val);
+
+                        // Schedule or cancel daily reminders based on setting
+                        if (val) {
+                          await NotificationService().scheduleDailyReminders();
+                        } else {
+                          await NotificationService().cancelDailyReminders();
+                        }
                       },
                     ),
                     backgroundColor: CupertinoColors.systemBackground,
@@ -673,7 +680,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   CupertinoListTile(
                     title: Text(
-                      "Vipassana Ressearch Institude",
+                      "Vipassana Research Institute",
                       style: Theme.of(
                         context,
                       ).textTheme.labelMedium!.copyWith(fontSize: 19),
@@ -685,6 +692,54 @@ class _SettingsPageState extends State<SettingsPage> {
                       )) {
                         throw Exception(
                           'Could not launch  https://www.vridhamma.org/',
+                        );
+                      }
+                    },
+                    backgroundColor: CupertinoColors.systemBackground,
+                  ),
+                ],
+              ),
+
+              CupertinoListSection(
+                header: Text("Privacy Policy"),
+                backgroundColor: CupertinoColors.systemGroupedBackground,
+                children: [
+                  CupertinoListTile(
+                    title: Text(
+                      "Privacy Policy",
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelMedium!.copyWith(fontSize: 19),
+                    ),
+                    trailing: Icon(
+                      CupertinoIcons.arrow_up_right_square,
+                      color: CupertinoColors.systemBlue,
+                      size: 20,
+                    ),
+                    onTap: () async {
+                      try {
+                        await launchUrl(
+                          Uri.parse(
+                            "https://zinmk.github.io/praxis.github.io/",
+                          ),
+                          mode: LaunchMode.inAppBrowserView,
+                        );
+                      } catch (e) {
+                        // Show error dialog if URL fails to launch
+                        showCupertinoDialog(
+                          context: context,
+                          builder: (context) => CupertinoAlertDialog(
+                            title: const Text("Error"),
+                            content: const Text(
+                              "Could not open Privacy Policy. Please check your internet connection and try again.",
+                            ),
+                            actions: [
+                              CupertinoDialogAction(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text("OK"),
+                              ),
+                            ],
+                          ),
                         );
                       }
                     },

@@ -8,6 +8,7 @@ import 'package:meditation_scheduler/Provider/meditation_provider.dart';
 import 'package:meditation_scheduler/SettingsHive.dart';
 import 'package:meditation_scheduler/feed.dart';
 import 'package:meditation_scheduler/widgets/elevatedbutton.dart';
+import 'package:meditation_scheduler/services/notification_service.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 class TimerPage extends ConsumerStatefulWidget {
@@ -21,13 +22,18 @@ class TimerPage extends ConsumerStatefulWidget {
 }
 
 class _TimerPageState extends ConsumerState<TimerPage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final AudioPlayer _player = AudioPlayer();
   late Duration _remaining;
   late Duration _initialDuration;
   bool paused = false;
   Timer? _timer;
   late AnimationController _starController;
+
+  // Track when the timer started for background persistence
+  DateTime? _timerStartTime;
+  DateTime? _lastPauseTime;
+  Duration _totalPausedTime = Duration.zero;
 
   @override
   void initState() {
@@ -42,7 +48,13 @@ class _TimerPageState extends ConsumerState<TimerPage>
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
 
+    // Add app lifecycle observer
+    WidgetsBinding.instance.addObserver(this);
+
     _startTimer();
+
+    // Schedule notification for timer completion
+    _scheduleCompletionNotification();
   }
 
   Future<void> saveMeditation({
@@ -50,52 +62,94 @@ class _TimerPageState extends ConsumerState<TimerPage>
     required bool isMorning,
     required int duration,
   }) async {
-    var box = await Hive.openBox("meditation");
-
-    // Normalize date (so morning/evening of same day map to same key)
-    final normalizedDate = DateTime(date.year, date.month, date.day);
-    final key = normalizedDate.toIso8601String();
-
-    // Read existing data if any
-    Map<dynamic, dynamic> entry = box.get(
-      key,
-      defaultValue: {
-        'morningCompleted': false,
-        'eveningCompleted': false,
-        'morningDuration': 0,
-        'eveningDuration': 0,
-      },
-    );
-
+    // Use the HiveDb methods instead of direct box access
     if (isMorning) {
-      entry['morningCompleted'] = true;
-      entry['morningDuration'] = widget.duration.inMinutes;
+      await MeditationDayHiveDB.updateMorningAsComplete(duration);
     } else {
-      entry['eveningCompleted'] = true;
-      entry['eveningDuration'] = widget.duration.inMinutes;
+      await MeditationDayHiveDB.updateEveningAsComplete(duration);
     }
-
-    // Save updated entry back
-    await box.put(key, entry);
   }
 
   void _startTimer() {
     _timer?.cancel();
+
+    // If this is the first start, record the start time
+    if (_timerStartTime == null) {
+      _timerStartTime = DateTime.now();
+    }
+
+    // If resuming from pause, add to total paused time
+    if (_lastPauseTime != null) {
+      _totalPausedTime += DateTime.now().difference(_lastPauseTime!);
+      _lastPauseTime = null;
+    }
+
     setState(() => paused = false);
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_remaining.inSeconds > 0) {
-        setState(() => _remaining -= const Duration(seconds: 1));
-      } else {
-        _timer?.cancel();
-        _onTimerComplete();
-      }
+      _updateRemainingTime();
     });
+  }
+
+  void _updateRemainingTime() {
+    if (_timerStartTime == null) return;
+
+    final now = DateTime.now();
+    final elapsedTime = now.difference(_timerStartTime!) - _totalPausedTime;
+    final newRemaining = _initialDuration - elapsedTime;
+
+    if (newRemaining.inSeconds > 0) {
+      setState(() => _remaining = newRemaining);
+    } else {
+      _timer?.cancel();
+      setState(() => _remaining = Duration.zero);
+      _onTimerComplete();
+    }
+  }
+
+  // Schedule notification for timer completion
+  void _scheduleCompletionNotification() {
+    final slot = widget.slot == MeditationSlot.morning ? 'morning' : 'evening';
+
+    // Only schedule if app is not in foreground
+    if (!NotificationService().isAppInForeground) {
+      NotificationService().scheduleTimerCompletionNotification(
+        duration: _remaining,
+        slot: slot,
+      );
+    } else {
+      print('App is in foreground - notification not scheduled');
+    }
+  }
+
+  // Reschedule notification when app goes to background
+  void _rescheduleNotificationIfNeeded() {
+    if (!NotificationService().isAppInForeground && _remaining.inSeconds > 0) {
+      _scheduleCompletionNotification();
+    }
+  }
+
+  // Cancel scheduled notification
+  void _cancelScheduledNotification() {
+    // Cancel all notifications when timer is cancelled or reset
+    NotificationService().cancelAllNotifications();
+  }
+
+  // Test notification (for debugging)
+  void _testNotification() {
+    NotificationService().showImmediateNotification(
+      title: 'Test Notification',
+      body: 'This is a test notification from meditation timer',
+      payload: 'test',
+    );
   }
 
   void _pauseTimer() {
     _timer?.cancel();
+    _lastPauseTime = DateTime.now();
     setState(() => paused = true);
+    // Cancel and reschedule notification when paused
+    _cancelScheduledNotification();
   }
 
   void _resetTimer() {
@@ -104,19 +158,40 @@ class _TimerPageState extends ConsumerState<TimerPage>
       paused = false;
       _remaining = _initialDuration;
     });
+
+    // Reset timer tracking variables
+    _timerStartTime = null;
+    _lastPauseTime = null;
+    _totalPausedTime = Duration.zero;
+
+    // Cancel old notification and schedule new one
+    _cancelScheduledNotification();
     _startTimer();
+    _scheduleCompletionNotification();
   }
 
   void _cancelTimer() async {
     _timer?.cancel();
     _player.stop();
+    // Cancel scheduled notification
+    _cancelScheduledNotification();
 
     setState(() => _remaining = Duration.zero);
+
+    // Reset timer tracking variables
+    _timerStartTime = null;
+    _lastPauseTime = null;
+    _totalPausedTime = Duration.zero;
+
     _navigateToFeed();
   }
 
   Future<void> _onTimerComplete() async {
     print(widget.slot);
+
+    // Cancel the scheduled notification since timer is complete
+    _cancelScheduledNotification();
+
     await saveMeditation(
       date: DateTime.now(),
       isMorning: widget.slot == MeditationSlot.morning,
@@ -162,7 +237,32 @@ class _TimerPageState extends ConsumerState<TimerPage>
     _timer?.cancel();
     _starController.dispose();
     _player.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // App came to foreground - update timer and cancel notifications
+        if (!paused && _timerStartTime != null) {
+          _updateRemainingTime();
+        }
+        _cancelScheduledNotification();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        // App went to background - reschedule notification if timer is running
+        if (!paused && _remaining.inSeconds > 0) {
+          _rescheduleNotificationIfNeeded();
+        }
+        break;
+    }
   }
 
   @override
@@ -235,7 +335,12 @@ class _TimerPageState extends ConsumerState<TimerPage>
                         bgcolor: Colors.transparent,
                         fgcolor: textButtonColor,
                         input: paused ? "Resume" : "Pause",
-                        onTap: paused ? _startTimer : _pauseTimer,
+                        onTap: paused
+                            ? () {
+                                _startTimer();
+                                _scheduleCompletionNotification();
+                              }
+                            : _pauseTimer,
                       ),
                     ),
                     const SizedBox(height: 10),
