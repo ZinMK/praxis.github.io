@@ -99,6 +99,9 @@ flutter:
     - assets/calendar.png
     - assets/setting.png
     - assets/PraxisLogo.JPEG
+    - assets/Audio/1H_VPSN.mp3
+    - assets/Audio/10_M_ANP_Guided.mp3
+    - assets/Audio/ANP_VPSN.mp3
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

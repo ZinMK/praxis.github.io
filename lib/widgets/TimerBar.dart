@@ -7,11 +7,12 @@ import 'package:meditation_scheduler/Provider/meditation_provider.dart';
 import 'package:meditation_scheduler/SettingsHive.dart';
 import 'package:meditation_scheduler/TimerPage.dart';
 import 'package:meditation_scheduler/widgets/elevatedbutton.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class TimerBar extends ConsumerStatefulWidget {
-  MeditationSlot meditationslot;
+  final MeditationSlot meditationslot;
 
-  TimerBar({super.key, required this.meditationslot});
+  const TimerBar({super.key, required this.meditationslot});
 
   @override
   ConsumerState<TimerBar> createState() => _TimerBarState();
@@ -30,12 +31,56 @@ TimeOfDay intToTimeOfDay(int time) {
 class _TimerBarState extends ConsumerState<TimerBar> {
   late TimeOfDay fromTime;
   late TimeOfDay toTime;
+  bool _isExpanded = false;
+  String? _selectedAudio;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
+  // Available guided meditation audio files with their durations (in minutes)
+  final Map<String, Map<String, dynamic>> _guidedMeditationAudios = {
+    'None (Manual Timer)': {
+      'file': null,
+      'duration': 0,
+      'displayName': 'Manual Timer',
+    },
+    '10_M_ANP_Guided.mp3': {
+      'file': 'Audio/10_M_ANP_Guided.mp3',
+      'duration': 10,
+      'displayName': '10 mins Anapana',
+    },
+    '1H_VPSN.mp3': {
+      'file': 'Audio/1H_VPSN.mp3',
+      'duration': 60,
+      'displayName': '1h Vipassana',
+    },
+    'ANP_VPSN.mp3': {
+      'file': 'Audio/ANP_VPSN.mp3',
+      'duration': 64,
+      'displayName': '1h Anpn & Vipsn',
+    },
+  };
+
   @override
   void initState() {
     super.initState();
+    _selectedAudio = 'None (Manual Timer)'; // Default to manual timer
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
   }
 
   Duration get duration {
+    // If guided meditation is selected, use its duration
+    if (_selectedAudio != null && _selectedAudio != 'None (Manual Timer)') {
+      final audioData = _guidedMeditationAudios[_selectedAudio];
+      if (audioData != null) {
+        return Duration(minutes: audioData['duration']);
+      }
+    }
+
+    // Otherwise use the time range duration
     final from = DateTime(2025, 1, 1, fromTime.hour, fromTime.minute);
     final to = DateTime(2025, 1, 1, toTime.hour, toTime.minute);
     return to.difference(from);
@@ -49,6 +94,32 @@ class _TimerBarState extends ConsumerState<TimerBar> {
         MeditationDayHiveDB.updateEveningAsComplete(duration.inMinutes);
       }
     });
+  }
+
+  void _playAudioPreview(String audioKey) async {
+    final audioData = _guidedMeditationAudios[audioKey];
+    if (audioData != null && audioData['file'] != null) {
+      try {
+        await _audioPlayer.play(AssetSource(audioData['file']));
+        // Stop preview after 10 seconds
+        Future.delayed(Duration(seconds: 10), () {
+          _audioPlayer.stop();
+        });
+      } catch (e) {
+        print('Error playing preview: $e');
+      }
+    }
+  }
+
+  void _stopAudioPreview() {
+    _audioPlayer.stop();
+  }
+
+  void _selectAudio(String audioKey) {
+    setState(() {
+      _selectedAudio = audioKey;
+    });
+    _stopAudioPreview();
   }
 
   Future _openEditSheet() async {
@@ -106,14 +177,14 @@ class _TimerBarState extends ConsumerState<TimerBar> {
                                     fromTime.hour * 100 + fromTime.minute,
                                   );
                                   SettingsHiveDB.updateMorningEndTime(
-                                    toTime!.hour * 100 + toTime!.minute,
+                                    toTime.hour * 100 + toTime.minute,
                                   );
                                 } else {
                                   SettingsHiveDB.updateEveningStartTime(
                                     fromTime.hour * 100 + fromTime.minute,
                                   );
                                   SettingsHiveDB.updateEveningEndTime(
-                                    toTime!.hour * 100 + toTime!.minute,
+                                    toTime.hour * 100 + toTime.minute,
                                   );
                                 }
                               });
@@ -187,10 +258,19 @@ class _TimerBarState extends ConsumerState<TimerBar> {
 
     return GestureDetector(
       onLongPress: _openEditSheet,
-      child: Container(
+      onTap: () {
+        setState(() {
+          _isExpanded = !_isExpanded;
+        });
+      },
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
         margin: const EdgeInsets.fromLTRB(0, 5, 0, 5),
-        width: 9999,
-        height: 130,
+        width: double.infinity,
+
+        /// alignment: Alignment.topCenter,
+        height: _isExpanded ? 250 : 130,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           color: Theme.of(context).hintColor,
@@ -222,6 +302,74 @@ class _TimerBarState extends ConsumerState<TimerBar> {
                   );
                 },
               ),
+
+              // Audio selection section (only show when expanded)
+              if (_isExpanded) ...[
+                SizedBox(height: 15),
+                Text(
+                  "Guided Meditation Audio",
+                  style: Theme.of(context).textTheme.labelMedium!.copyWith(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 10),
+                Flexible(
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _guidedMeditationAudios.length,
+                    itemBuilder: (context, index) {
+                      final audioKey = _guidedMeditationAudios.keys.elementAt(
+                        index,
+                      );
+                      final audioData = _guidedMeditationAudios[audioKey]!;
+                      final isSelected = _selectedAudio == audioKey;
+
+                      return Container(
+                        margin: EdgeInsets.only(right: 10),
+                        child: GestureDetector(
+                          onTap: () => _selectAudio(audioKey),
+                          onLongPress: audioData['file'] != null
+                              ? () => _playAudioPreview(audioKey)
+                              : null,
+                          child: Container(
+                            width: 100,
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              color: isSelected
+                                  ? Color.fromARGB(255, 249, 223, 156)
+                                  : Colors.white.withOpacity(0.2),
+                              border: isSelected
+                                  ? Border.all(
+                                      color: Color.fromARGB(255, 92, 7, 1),
+                                      width: 2,
+                                    )
+                                  : null,
+                            ),
+                            child: Center(
+                              child: SingleChildScrollView(
+                                child: Text(
+                                  audioData['displayName'],
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? Color.fromARGB(255, 92, 7, 1)
+                                        : Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
 
               Expanded(
                 child: Row(
@@ -374,6 +522,12 @@ class _TimerBarState extends ConsumerState<TimerBar> {
                                         ) => TimerPage(
                                           duration: duration,
                                           slot: widget.meditationslot,
+                                          selectedAudio:
+                                              _selectedAudio !=
+                                                  'None (Manual Timer)'
+                                              ? _guidedMeditationAudios[_selectedAudio]!['displayName']
+                                                    .toString()
+                                              : null,
                                         ),
                                     transitionsBuilder:
                                         (
