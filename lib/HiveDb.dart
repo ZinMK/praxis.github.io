@@ -37,33 +37,6 @@ class MeditationDayHiveDB {
   static List<bool> getThisDayCompleted(DateTime today) {
     final _newkey = today.toIso8601String();
 
-    print(
-      meditationDays.get(
-        _newkey,
-        defaultValue: {
-          'morningCompleted': false,
-          'eveningCompleted': false,
-          'morningDuration': 0,
-          'eveningDuration': 0,
-          'morningCompletionTime': null,
-          'eveningCompletionTime': null,
-        },
-      )['morningCompleted'],
-    );
-    print(
-      meditationDays.get(
-        _newkey,
-        defaultValue: {
-          'morningCompleted': false,
-          'eveningCompleted': false,
-          'morningDuration': 0,
-          'eveningDuration': 0,
-          'morningCompletionTime': null,
-          'eveningCompletionTime': null,
-        },
-      )['eveningCompleted'],
-    );
-
     return [
       meditationDays.get(
         _newkey,
@@ -120,7 +93,6 @@ class MeditationDayHiveDB {
     entry['morningDuration'] = duration;
     entry['morningCompletionTime'] = DateTime.now().toIso8601String();
     await meditationDays.put(_key, entry);
-    print('morning Updated' + entry.toString());
   }
 
   static Future<void> updateEveningAsComplete(int duration) async {
@@ -139,7 +111,6 @@ class MeditationDayHiveDB {
     entry['eveningDuration'] = duration;
     entry['eveningCompletionTime'] = DateTime.now().toIso8601String();
     await meditationDays.put(_key, entry);
-    print('Evening Updated' + entry.toString());
   }
 
   static int getTotalMeditationMinutes() {

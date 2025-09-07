@@ -38,121 +38,119 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         padding: EdgeInsets.all(UniversalPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+
           children: [
-            Expanded(
-              child: ListView(
-                children: [
-                  SizedBox(height: MediaQuery.of(context).size.height * 0.01),
-                  Text(
-                    'You meditated for',
-                    style: Theme.of(context).textTheme.labelMedium!.copyWith(
-                      color: Theme.of(context).focusColor,
-                    ),
-                    overflow: TextOverflow.visible,
-                  ),
-                  SizedBox(height: MediaQuery.of(context).size.height * 0.01),
-                  //Top Section
-                  ValueListenableBuilder(
-                    valueListenable: Hive.box("meditation").listenable(),
-                    builder: (context, value, child) {
-                      return Row(
-                        children: [
-                          Expanded(
-                            child: Consumer(
-                              builder: (context, ref, child) {
-                                return InfoTab(
-                                  input:
-                                      '${MeditationDayHiveDB.getTotalMeditationDays()} days',
-                                );
-                              },
-                            ),
-                          ),
-                          SizedBox(width: 20),
-                          Expanded(
-                            child: InfoTab(
-                              input:
-                                  "${(MeditationDayHiveDB.getTotalMeditationMinutes() / 60).toStringAsFixed(0)} hours",
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  SizedBox(height: MediaQuery.of(context).size.height * 0.02),
-                  // Today Section
-                  //
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Text(
-                        overflow: TextOverflow.visible,
-                        "Today ${DateFormat("MMM, dd").format(DateTime.now())}",
-                        style: Theme.of(context).textTheme.labelMedium!
-                            .copyWith(color: Theme.of(context).focusColor),
-                      ),
-                      SizedBox(width: 15),
-                      ValueListenableBuilder(
-                        valueListenable: Hive.box("meditation").listenable(),
-                        builder: (context, Box box, _) {
-                          final normalizedDate = DateTime(
-                            DateTime.now().year,
-                            DateTime.now().month,
-                            DateTime.now().day,
+            SizedBox(height: MediaQuery.of(context).size.height * 0.07),
+            Text(
+              'You meditated for',
+              style: Theme.of(context).textTheme.labelMedium!.copyWith(
+                color: Theme.of(context).focusColor,
+              ),
+              overflow: TextOverflow.visible,
+            ),
+            SizedBox(height: MediaQuery.of(context).size.height * 0.01),
+            //Top Section
+            ValueListenableBuilder(
+              valueListenable: Hive.box("meditation").listenable(),
+              builder: (context, value, child) {
+                return Row(
+                  children: [
+                    Expanded(
+                      child: Consumer(
+                        builder: (context, ref, child) {
+                          return InfoTab(
+                            input:
+                                '${MeditationDayHiveDB.getTotalMeditationDays()} days',
                           );
-                          final key = normalizedDate.toIso8601String();
-
-                          final entry = box.get(
-                            key,
-                            defaultValue: {
-                              'morningCompleted': false,
-                              'eveningCompleted': false,
-                              'morningDuration': 0,
-                              'eveningDuration': 0,
-                            },
-                          );
-
-                          final todayCompleted =
-                              entry['morningCompleted'] &&
-                              entry['eveningCompleted'];
-
-                          return todayCompleted
-                              ? Flexible(
-                                  child: DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(20),
-                                      color: const Color.fromARGB(
-                                        255,
-                                        55,
-                                        208,
-                                        60,
-                                      ),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      child: Text(
-                                        overflow: TextOverflow.visible,
-                                        "Completed 🎉",
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelSmall!
-                                            .copyWith(
-                                              color: Colors.white,
-                                              fontSize: 14,
-                                            ),
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              : Container();
                         },
                       ),
-                    ],
+                    ),
+                    SizedBox(width: 20),
+                    Expanded(
+                      child: InfoTab(
+                        input:
+                            "${(MeditationDayHiveDB.getTotalMeditationMinutes() / 60).toStringAsFixed(0)} hours",
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+
+            // Today Section
+            //
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Text(
+                  overflow: TextOverflow.visible,
+                  "Today ${DateFormat("MMM, dd").format(DateTime.now())}",
+                  style: Theme.of(context).textTheme.labelMedium!.copyWith(
+                    color: Theme.of(context).focusColor,
                   ),
-                  SizedBox(height: MediaQuery.of(context).size.height * 0.01),
+                ),
+                SizedBox(width: 15),
+                ValueListenableBuilder(
+                  valueListenable: Hive.box("meditation").listenable(),
+                  builder: (context, Box box, _) {
+                    final normalizedDate = DateTime(
+                      DateTime.now().year,
+                      DateTime.now().month,
+                      DateTime.now().day,
+                    );
+                    final key = normalizedDate.toIso8601String();
+
+                    final entry = box.get(
+                      key,
+                      defaultValue: {
+                        'morningCompleted': false,
+                        'eveningCompleted': false,
+                        'morningDuration': 0,
+                        'eveningDuration': 0,
+                      },
+                    );
+
+                    final todayCompleted =
+                        entry['morningCompleted'] && entry['eveningCompleted'];
+
+                    return todayCompleted
+                        ? Flexible(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                color: const Color.fromARGB(255, 55, 208, 60),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                child: Text(
+                                  overflow: TextOverflow.visible,
+                                  "Completed 🎉",
+                                  style: Theme.of(context).textTheme.labelSmall!
+                                      .copyWith(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                      ),
+                                ),
+                              ),
+                            ),
+                          )
+                        : Container();
+                  },
+                ),
+              ],
+            ),
+
+            SizedBox(height: MediaQuery.of(context).size.height * 0.01),
+            Flexible(
+              child: ListView(
+                padding: EdgeInsets.all(0),
+                physics: NeverScrollableScrollPhysics(), // disable
+                shrinkWrap: true,
+                children: [
                   Consumer(
                     builder: (context, ref, child) {
                       return TimerBar(meditationslot: MeditationSlot.morning);
@@ -200,7 +198,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                         children: [
                           IconButton(
                             onPressed: () {
-                              final TextEditingController _messageController =
+                              final TextEditingController messageController =
                                   TextEditingController();
 
                               showDialog(
@@ -212,7 +210,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                                     title: const Text('Add a Message'),
 
                                     content: TextField(
-                                      controller: _messageController,
+                                      controller: messageController,
                                       decoration: InputDecoration(
                                         hintText:
                                             'Remember to be kind to yourself...',
@@ -255,12 +253,12 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                                                   .copyWith(fontSize: 18),
                                             ),
                                             onPressed: () {
-                                              if (_messageController
+                                              if (messageController
                                                   .text
                                                   .isNotEmpty) {
                                                 // Add the message to Hive
                                                 HiveMessagesClass.addMessage(
-                                                  _messageController.text,
+                                                  messageController.text,
                                                 );
                                                 Navigator.of(context).pop();
                                               }

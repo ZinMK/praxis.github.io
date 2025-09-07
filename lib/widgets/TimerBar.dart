@@ -82,7 +82,13 @@ class _TimerBarState extends ConsumerState<TimerBar> {
 
     // Otherwise use the time range duration
     final from = DateTime(2025, 1, 1, fromTime.hour, fromTime.minute);
-    final to = DateTime(2025, 1, 1, toTime.hour, toTime.minute);
+    DateTime to = DateTime(2025, 1, 1, toTime.hour, toTime.minute);
+
+    // If end time is earlier than start time, it means it's on the next day
+    if (to.isBefore(from)) {
+      to = to.add(Duration(days: 1));
+    }
+
     return to.difference(from);
   }
 
@@ -105,9 +111,7 @@ class _TimerBarState extends ConsumerState<TimerBar> {
         Future.delayed(Duration(seconds: 10), () {
           _audioPlayer.stop();
         });
-      } catch (e) {
-        print('Error playing preview: $e');
-      }
+      } catch (e) {}
     }
   }
 
@@ -126,8 +130,10 @@ class _TimerBarState extends ConsumerState<TimerBar> {
     await showCupertinoModalPopup(
       context: context,
       builder: (context) {
-        TimeOfDay tempFrom = fromTime;
-        TimeOfDay tempTo = toTime;
+        // Set default to current time
+        final now = TimeOfDay.now();
+        TimeOfDay tempFrom = now;
+        TimeOfDay tempTo = now;
         bool isAdjustingFromTime = true;
 
         return Material(
@@ -267,7 +273,7 @@ class _TimerBarState extends ConsumerState<TimerBar> {
         duration: Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         margin: const EdgeInsets.fromLTRB(0, 5, 0, 5),
-        width: double.infinity,
+        width: 9999,
 
         /// alignment: Alignment.topCenter,
         height: _isExpanded ? 250 : 130,

@@ -20,7 +20,6 @@ class NotificationService {
   // Method to update app state
   void updateAppState(bool isInForeground) {
     _isAppInForeground = isInForeground;
-    print('App state updated: ${isInForeground ? "Foreground" : "Background"}');
   }
 
   Future<void> initialize() async {
@@ -55,7 +54,6 @@ class NotificationService {
 
   void _onNotificationTapped(NotificationResponse response) {
     // Handle notification tap - you can navigate to specific screens here
-    print('Notification tapped: ${response.payload}');
   }
 
   // Schedule a notification for when the timer completes
@@ -106,20 +104,16 @@ class NotificationService {
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       payload: 'meditation_complete_$slot',
     );
-
-    print('Scheduled notification for ${slot} meditation at $completionTime');
   }
 
   // Cancel all scheduled notifications
   Future<void> cancelAllNotifications() async {
     await _notifications.cancelAll();
-    print('All notifications cancelled');
   }
 
   // Cancel specific notification by ID
   Future<void> cancelNotification(int id) async {
     await _notifications.cancel(id);
-    print('Notification $id cancelled');
   }
 
   // Get pending notifications
@@ -177,7 +171,6 @@ class NotificationService {
     final notificationsEnabled = await _getNotificationsEnabled();
 
     if (!notificationsEnabled) {
-      print('Notifications disabled - not scheduling daily reminders');
       return;
     }
 
@@ -199,7 +192,6 @@ class NotificationService {
         scheduledTime: morningReminderTime,
         payload: 'morning_reminder',
       );
-      print('Scheduled morning reminder for ${morningReminderTime.toString()}');
     }
 
     // Schedule evening reminder
@@ -217,7 +209,6 @@ class NotificationService {
         scheduledTime: eveningReminderTime,
         payload: 'evening_reminder',
       );
-      print('Scheduled evening reminder for ${eveningReminderTime.toString()}');
     }
   }
 
@@ -271,7 +262,6 @@ class NotificationService {
   Future<void> cancelDailyReminders() async {
     await _notifications.cancel(1001); // Morning reminder
     await _notifications.cancel(1002); // Evening reminder
-    print('Daily reminders cancelled');
   }
 
   // Helper method to convert time (e.g., 900) to DateTime

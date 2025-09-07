@@ -92,6 +92,8 @@ class _TimerPageState extends ConsumerState<TimerPage>
         _guidedMeditationAudios.containsKey(widget.selectedAudio)) {
       try {
         final audioPath = _guidedMeditationAudios[widget.selectedAudio!]!;
+        // Set player mode for better seeking support
+        await _guidedMeditationPlayer.setPlayerMode(PlayerMode.mediaPlayer);
         await _guidedMeditationPlayer.play(AssetSource(audioPath));
 
         // Listen for guided meditation completion
@@ -101,12 +103,27 @@ class _TimerPageState extends ConsumerState<TimerPage>
             _onTimerComplete();
           }
         });
-
-        print('Started guided meditation: ${widget.selectedAudio}');
-      } catch (e) {
-        print('Error playing guided meditation: $e');
-      }
+      } catch (e) {}
     }
+  }
+
+  Future<void> _seekGuidedMeditationTo(Duration position) async {
+    if (widget.selectedAudio == null) return;
+
+    try {
+      final state = _guidedMeditationPlayer.state;
+
+      // If player is not in a state that allows seeking, restart and seek
+      if (state != PlayerState.playing && state != PlayerState.paused) {
+        final audioPath = _guidedMeditationAudios[widget.selectedAudio!]!;
+        await _guidedMeditationPlayer.setPlayerMode(PlayerMode.mediaPlayer);
+        await _guidedMeditationPlayer.play(AssetSource(audioPath));
+        // Wait a bit for the player to be ready
+        await Future.delayed(Duration(milliseconds: 100));
+      }
+
+      await _guidedMeditationPlayer.seek(position);
+    } catch (e) {}
   }
 
   void _startTimer() {
@@ -161,9 +178,7 @@ class _TimerPageState extends ConsumerState<TimerPage>
         duration: _remaining,
         slot: slot,
       );
-    } else {
-      print('App is in foreground - notification not scheduled');
-    }
+    } else {}
   }
 
   // Reschedule notification when app goes to background
@@ -243,20 +258,7 @@ class _TimerPageState extends ConsumerState<TimerPage>
     _navigateToFeed();
   }
 
-  // Method to seek guided meditation audio to a specific position
-  Future<void> _seekGuidedMeditationTo(Duration position) async {
-    if (widget.selectedAudio != null) {
-      try {
-        await _guidedMeditationPlayer.seek(position);
-      } catch (e) {
-        print('Error seeking guided meditation: $e');
-      }
-    }
-  }
-
   Future<void> _onTimerComplete() async {
-    print(widget.slot);
-
     // Cancel the scheduled notification since timer is complete
     _cancelScheduledNotification();
 
@@ -273,7 +275,7 @@ class _TimerPageState extends ConsumerState<TimerPage>
           .completeSlot(widget.slot, widget.duration);
     }
 
-    // Only play timer ending sound if no guided meditation audio is selected
+    // Only play timer ending sound if no guided meditation is selected
     if (widget.selectedAudio == null) {
       String audioname = SettingsHiveDB.getTimerSound();
       await _player.play(AssetSource(audioname), volume: 8);
@@ -282,7 +284,7 @@ class _TimerPageState extends ConsumerState<TimerPage>
         _navigateToFeed();
       });
     } else {
-      print('Guided meditation completed - skipping timer ending sound');
+      // If guided meditation was playing, navigate directly to feed
       _navigateToFeed();
     }
   }
@@ -368,30 +370,6 @@ class _TimerPageState extends ConsumerState<TimerPage>
                   ),
 
                 // Show guided meditation info if selected
-                if (widget.selectedAudio != null) ...[
-                  SizedBox(height: 10),
-
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      color: SettingsHiveDB.getTimerBG() == 'default'
-                          ? Colors.black.withOpacity(0.8)
-                          : Colors.white.withOpacity(0.2),
-                    ),
-                    child: Text(
-                      paused
-                          ? "⏸️ Guided ${widget.selectedAudio} Meditation Paused"
-                          : "🎧 Guided ${widget.selectedAudio} Meditation Playing",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-
                 const SizedBox(height: 100),
 
                 // Timer display
@@ -424,53 +402,73 @@ class _TimerPageState extends ConsumerState<TimerPage>
                   ),
                 ),
 
-                const SizedBox(height: 50),
+                const SizedBox(height: 120),
 
-                // Scrubber for testing (only show in debug mode)
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      Text(
-                        "Test Scrubber",
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                widget.selectedAudio != null
+                    ? Container(
+                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          children: [
+                            SizedBox(height: 10),
+                            Slider(
+                              value:
+                                  (_initialDuration.inSeconds -
+                                          _remaining.inSeconds)
+                                      .toDouble(),
+                              min: 0,
+                              max: _initialDuration.inSeconds.toDouble(),
+                              divisions: _initialDuration.inSeconds,
+                              activeColor:
+                                  SettingsHiveDB.getTimerBG() == 'default'
+                                  ? Colors.black87
+                                  : Colors.white,
+                              inactiveColor:
+                                  SettingsHiveDB.getTimerBG() == 'default'
+                                  ? Colors.black26
+                                  : Colors.white30,
+                              onChanged: (value) {
+                                setState(() {
+                                  _remaining =
+                                      _initialDuration -
+                                      Duration(seconds: value.toInt());
+                                  // Update timer start time to match the scrubber position
+                                  _timerStartTime = DateTime.now().subtract(
+                                    Duration(seconds: value.toInt()),
+                                  );
+                                  _totalPausedTime = Duration.zero;
+                                });
+
+                                // Seek the guided meditation audio to match the scrubber position
+                                _seekGuidedMeditationTo(
+                                  Duration(seconds: value.toInt()),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      )
+                    : Container(),
+                if (widget.selectedAudio != null) ...[
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: SettingsHiveDB.getTimerBG() == 'default'
+                          ? Colors.black.withOpacity(0.8)
+                          : Colors.white.withOpacity(0.2),
+                    ),
+                    child: Text(
+                      paused
+                          ? "⏸️ Guided ${widget.selectedAudio} Meditation Paused"
+                          : "🎧 Guided ${widget.selectedAudio} Meditation Playing",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
                       ),
-                      SizedBox(height: 10),
-                      Slider(
-                        thumbColor: SettingsHiveDB.getTimerBG() != "default"
-                            ? Colors.white
-                            : const Color.fromARGB(255, 113, 110, 110),
-                        value:
-                            (_initialDuration.inSeconds - _remaining.inSeconds)
-                                .toDouble(),
-                        min: 0,
-                        max: _initialDuration.inSeconds.toDouble(),
-
-                        divisions: _initialDuration.inSeconds,
-                        activeColor: Colors.white,
-                        inactiveColor: Colors.white30,
-                        onChanged: (value) {
-                          setState(() {
-                            _remaining =
-                                _initialDuration -
-                                Duration(seconds: value.toInt());
-                            // Update timer start time to match the scrubber position
-                            _timerStartTime = DateTime.now().subtract(
-                              Duration(seconds: value.toInt()),
-                            );
-                            _totalPausedTime = Duration.zero;
-                          });
-
-                          // Also seek the guided meditation audio to match the scrubber position
-                          _seekGuidedMeditationTo(
-                            Duration(seconds: value.toInt()),
-                          );
-                        },
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-
+                ],
                 const SizedBox(height: 50),
 
                 // Control buttons

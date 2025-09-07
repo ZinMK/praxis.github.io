@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:meditation_scheduler/HiveDb.dart';
 import 'package:meditation_scheduler/SettingsHive.dart';
-import 'package:meditation_scheduler/widgets/bottom_sheet_card.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import 'package:hive_flutter/hive_flutter.dart';
@@ -127,7 +126,6 @@ class _CalendarPageState extends State<CalendarPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
           "Calendar",
