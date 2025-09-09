@@ -544,7 +544,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ],
               ),
               CupertinoListSection(
-                header: Text("Default Schedule"),
+                header: Text("Schedule"),
                 backgroundColor: CupertinoColors.systemGroupedBackground,
                 children: [
                   CupertinoListTile(

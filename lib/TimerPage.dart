@@ -9,6 +9,7 @@ import 'package:meditation_scheduler/feed.dart';
 import 'package:meditation_scheduler/widgets/elevatedbutton.dart';
 import 'package:meditation_scheduler/services/notification_service.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 class TimerPage extends ConsumerStatefulWidget {
   final Duration duration;
@@ -52,7 +53,7 @@ class _TimerPageState extends ConsumerState<TimerPage>
   @override
   void initState() {
     super.initState();
-
+    WakelockPlus.enable();
     _initialDuration = widget.duration;
 
     _remaining = widget.duration;
@@ -254,7 +255,7 @@ class _TimerPageState extends ConsumerState<TimerPage>
     _timerStartTime = null;
     _lastPauseTime = null;
     _totalPausedTime = Duration.zero;
-
+    WakelockPlus.disable();
     _navigateToFeed();
   }
 
