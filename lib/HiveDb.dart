@@ -11,6 +11,44 @@ class MeditationDayHiveDB {
   // Box which will use to store the things
   static final meditationDays = Hive.box("meditation");
 
+  // Check if day has changed and clear day-specific times if needed
+  static Future<void> checkAndResetDaySpecificTimes() async {
+    const String lastDateKey = 'lastAppDate';
+    final String currentDate = DateTime.now().toIso8601String().split(
+      'T',
+    )[0]; // YYYY-MM-DD format
+
+    final lastDate = meditationDays.get(lastDateKey);
+
+    if (lastDate != currentDate) {
+      // Day has changed, clear any existing day-specific times for today
+      final entry = await meditationDays.get(
+        _key,
+        defaultValue: {
+          'morningCompleted': false,
+          'eveningCompleted': false,
+          'morningDuration': 0,
+          'eveningDuration': 0,
+          'morningCompletionTime': null,
+          'eveningCompletionTime': null,
+          'morningStartTime': null,
+          'morningEndTime': null,
+          'eveningStartTime': null,
+          'eveningEndTime': null,
+        },
+      );
+
+      // Reset day-specific times to null
+      entry['morningStartTime'] = null;
+      entry['morningEndTime'] = null;
+      entry['eveningStartTime'] = null;
+      entry['eveningEndTime'] = null;
+
+      await meditationDays.put(_key, entry);
+      await meditationDays.put(lastDateKey, currentDate);
+    }
+  }
+
   // Create or add single data in hive
 
   // Create or add multiple data in hive

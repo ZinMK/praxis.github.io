@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:meditation_scheduler/HiveDb.dart';
 import 'package:meditation_scheduler/HiveMessages.dart';
 import 'package:meditation_scheduler/services/notification_service.dart';
 import 'package:meditation_scheduler/SettingsHive.dart';
@@ -17,6 +18,9 @@ void main() async {
   await Hive.openBox("meditation");
   await Hive.openBox("settings");
   await Hive.openBox("messages");
+
+  // Check if day has changed and reset day-specific times if needed
+  await MeditationDayHiveDB.checkAndResetDaySpecificTimes();
 
   HiveMessagesClass.addMessage(
     "Welcome to the App! You can add messages for yourself that will appear here randomly.",
@@ -59,8 +63,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     switch (state) {
       case AppLifecycleState.resumed:
-        // App is in foreground
+        // App is in foreground - check if day has changed
         NotificationService().updateAppState(true);
+        MeditationDayHiveDB.checkAndResetDaySpecificTimes();
         break;
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
