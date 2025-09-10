@@ -1,9 +1,5 @@
-import 'dart:ffi';
-
 import 'package:hive/hive.dart';
-
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:meditation_scheduler/Provider/meditation_provider.dart';
 
 class MeditationDayHiveDB {
   static final normalizedDate = DateTime(
@@ -172,5 +168,92 @@ class MeditationDayHiveDB {
       }
     }
     return sum_Complete_days;
+  }
+
+  // Day-specific time methods
+  static Future<void> updateTodayMorningTimes(
+    int startTime,
+    int endTime,
+  ) async {
+    Map<dynamic, dynamic> entry = await meditationDays.get(
+      _key,
+      defaultValue: {
+        'morningCompleted': false,
+        'eveningCompleted': false,
+        'morningDuration': 0,
+        'eveningDuration': 0,
+        'morningCompletionTime': null,
+        'eveningCompletionTime': null,
+        'morningStartTime': null,
+        'morningEndTime': null,
+        'eveningStartTime': null,
+        'eveningEndTime': null,
+      },
+    );
+    entry['morningStartTime'] = startTime;
+    entry['morningEndTime'] = endTime;
+    await meditationDays.put(_key, entry);
+  }
+
+  static Future<void> updateTodayEveningTimes(
+    int startTime,
+    int endTime,
+  ) async {
+    Map<dynamic, dynamic> entry = await meditationDays.get(
+      _key,
+      defaultValue: {
+        'morningCompleted': false,
+        'eveningCompleted': false,
+        'morningDuration': 0,
+        'eveningDuration': 0,
+        'morningCompletionTime': null,
+        'eveningCompletionTime': null,
+        'morningStartTime': null,
+        'morningEndTime': null,
+        'eveningStartTime': null,
+        'eveningEndTime': null,
+      },
+    );
+    entry['eveningStartTime'] = startTime;
+    entry['eveningEndTime'] = endTime;
+    await meditationDays.put(_key, entry);
+  }
+
+  static List<int?> getTodayMorningTimes() {
+    final entry = meditationDays.get(
+      _key,
+      defaultValue: {
+        'morningCompleted': false,
+        'eveningCompleted': false,
+        'morningDuration': 0,
+        'eveningDuration': 0,
+        'morningCompletionTime': null,
+        'eveningCompletionTime': null,
+        'morningStartTime': null,
+        'morningEndTime': null,
+        'eveningStartTime': null,
+        'eveningEndTime': null,
+      },
+    );
+    return [entry['morningStartTime'], entry['morningEndTime']];
+  }
+
+  static List<int?> getTodayEveningTimes() {
+    final entry = meditationDays.get(
+      _key,
+      defaultValue: {
+        'morningCompleted': false,
+        'eveningCompleted': false,
+        'morningDuration': 0,
+        'eveningDuration': 0,
+        'morningCompletionTime': null,
+        'eveningCompletionTime': null,
+        'morningStartTime': null,
+        'morningEndTime': null,
+        'eveningStartTime': null,
+        'eveningEndTime': null,
+      },
+    );
+    return [entry['eveningStartTime'], entry['eveningEndTime']];
   }
 }

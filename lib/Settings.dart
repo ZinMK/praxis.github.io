@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:hive/hive.dart';
 
 import 'package:meditation_scheduler/SettingsHive.dart';
 import 'package:meditation_scheduler/services/notification_service.dart';
@@ -25,14 +26,12 @@ TimeOfDay intToTimeOfDay(int time) {
 
 class _SettingsPageState extends State<SettingsPage> {
   final Map<String, String> _soundFiles = {
-    "Goenkaji Chant": "goenkaji_chant.mp3",
     "Alarm": "Alarm.wav",
     "Wave": "Smooth.mp3",
     "Pluck": "pluck.mp3",
   };
 
   Map<String, String> reverse = {
-    "goenkaji_chant.mp3": "Goenkaji Chant",
     "Alarm.wav": "Alarm",
     "Smooth.mp3": "Wave",
     "pluck.mp3": "Pluck",
@@ -160,132 +159,6 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
-
-  // void _showTimePicker(String day) {
-  //   final initialStart = _schedule[day]!.start;
-  //   final initialEnd = _schedule[day]!.end;
-  //   TimeOfDay? tempStart = initialStart;
-  //   TimeOfDay? tempEnd = initialEnd;
-
-  //   showCupertinoModalPopup(
-  //     context: context,
-  //     builder: (context) => Material(
-  //       child: Container(
-  //         height: 350, // Increased height for larger pickers
-  //         color: CupertinoColors.systemBackground.resolveFrom(context),
-  //         child: Column(
-  //           children: [
-  //             Padding(
-  //               padding: const EdgeInsets.all(8.0),
-  //               child: Text(
-  //                 "Set $day Schedule",
-  //                 style: TextStyle(
-  //                   fontSize: 18,
-  //                   fontWeight: FontWeight.bold,
-  //                   color: CupertinoColors.label.resolveFrom(context),
-  //                 ),
-  //               ),
-  //             ),
-  //             Expanded(
-  //               child: Row(
-  //                 children: [
-  //                   Expanded(
-  //                     child: Column(
-  //                       children: [
-  //                         Text(
-  //                           "Start",
-  //                           style: TextStyle(
-  //                             fontSize: 16,
-  //                             color: CupertinoColors.label.resolveFrom(context),
-  //                           ),
-  //                         ),
-  //                         Expanded(
-  //                           child: CupertinoDatePicker(
-  //                             mode: CupertinoDatePickerMode.time,
-  //                             initialDateTime: DateTime(
-  //                               2023,
-  //                               1,
-  //                               1,
-  //                               initialStart.hour,
-  //                               initialStart.minute,
-  //                             ),
-  //                             onDateTimeChanged: (val) {
-  //                               tempStart = TimeOfDay(
-  //                                 hour: val.hour,
-  //                                 minute: val.minute,
-  //                               );
-  //                             },
-  //                             itemExtent: 48, // Larger item extent
-  //                           ),
-  //                         ),
-  //                       ],
-  //                     ),
-  //                   ),
-  //                   Expanded(
-  //                     child: Column(
-  //                       children: [
-  //                         Text(
-  //                           "End",
-  //                           style: TextStyle(
-  //                             fontSize: 16,
-  //                             color: CupertinoColors.label.resolveFrom(context),
-  //                           ),
-  //                         ),
-  //                         Expanded(
-  //                           child: CupertinoDatePicker(
-  //                             mode: CupertinoDatePickerMode.time,
-  //                             initialDateTime: DateTime(
-  //                               2023,
-  //                               1,
-  //                               1,
-  //                               initialEnd.hour,
-  //                               initialEnd.minute,
-  //                             ),
-  //                             onDateTimeChanged: (val) {
-  //                               tempEnd = TimeOfDay(
-  //                                 hour: val.hour,
-  //                                 minute: val.minute,
-  //                               );
-  //                             },
-  //                             itemExtent: 48, // Larger item extent
-  //                           ),
-  //                         ),
-  //                       ],
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //             Padding(
-  //               padding: const EdgeInsets.all(8.0),
-  //               child: Row(
-  //                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-  //                 children: [
-  //                   CupertinoButton(
-  //                     child: const Text("Cancel"),
-  //                     onPressed: () => Navigator.pop(context),
-  //                   ),
-  //                   CupertinoButton(
-  //                     child: const Text("Save"),
-  //                     onPressed: () {
-  //                       setState(() {
-  //                         _schedule[day] = TimeOfDayRange(
-  //                           start: tempStart!,
-  //                           end: tempEnd!,
-  //                         );
-  //                       });
-  //                       Navigator.pop(context);
-  //                     },
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
 
   _showDefaultTimePicker(bool isMorning) {
     final initialStart = isMorning
@@ -458,7 +331,10 @@ class _SettingsPageState extends State<SettingsPage> {
         actions: [
           CupertinoDialogAction(
             isDestructiveAction: true,
-            onPressed: () {
+            onPressed: () async {
+              await Hive.deleteBoxFromDisk("messages");
+              await Hive.deleteBoxFromDisk("meditation");
+              await Hive.deleteBoxFromDisk("settings");
               Navigator.pop(context);
               // Reset logic here
             },
@@ -544,7 +420,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ],
               ),
               CupertinoListSection(
-                header: Text("Schedule"),
+                header: Text("Default Schedule"),
                 backgroundColor: CupertinoColors.systemGroupedBackground,
                 children: [
                   CupertinoListTile(

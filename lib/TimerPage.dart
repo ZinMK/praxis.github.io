@@ -14,14 +14,8 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 class TimerPage extends ConsumerStatefulWidget {
   final Duration duration;
   final MeditationSlot slot; // morning or evening
-  final String? selectedAudio; // guided meditation audio file name
 
-  const TimerPage({
-    super.key,
-    required this.duration,
-    required this.slot,
-    this.selectedAudio,
-  });
+  const TimerPage({super.key, required this.duration, required this.slot});
 
   @override
   ConsumerState<TimerPage> createState() => _TimerPageState();
@@ -30,8 +24,7 @@ class TimerPage extends ConsumerStatefulWidget {
 class _TimerPageState extends ConsumerState<TimerPage>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final AudioPlayer _player = AudioPlayer();
-  final AudioPlayer _guidedMeditationPlayer =
-      AudioPlayer(); // Separate player for guided meditation
+  // Separate player for guided meditation
   late Duration _remaining;
   late Duration _initialDuration;
   bool paused = false;
@@ -42,13 +35,6 @@ class _TimerPageState extends ConsumerState<TimerPage>
   DateTime? _timerStartTime;
   DateTime? _lastPauseTime;
   Duration _totalPausedTime = Duration.zero;
-
-  // Available guided meditation audio files with their paths
-  final Map<String, String> _guidedMeditationAudios = {
-    '10 mins Anapana': 'Audio/10_M_ANP_Guided.mp3',
-    '1h Vipassana': 'Audio/1H_VPSN.mp3',
-    '1h Anpn & Vipsn': 'Audio/ANP_VPSN.mp3',
-  };
 
   @override
   void initState() {
@@ -69,7 +55,6 @@ class _TimerPageState extends ConsumerState<TimerPage>
     _startTimer();
 
     // Start guided meditation audio if selected
-    _startGuidedMeditationIfSelected();
 
     // Schedule notification for timer completion
     _scheduleCompletionNotification();
@@ -88,42 +73,9 @@ class _TimerPageState extends ConsumerState<TimerPage>
     }
   }
 
-  Future<void> _startGuidedMeditationIfSelected() async {
-    if (widget.selectedAudio != null &&
-        _guidedMeditationAudios.containsKey(widget.selectedAudio)) {
-      try {
-        final audioPath = _guidedMeditationAudios[widget.selectedAudio!]!;
-        // Set player mode for better seeking support
-        await _guidedMeditationPlayer.setPlayerMode(PlayerMode.mediaPlayer);
-        await _guidedMeditationPlayer.play(AssetSource(audioPath));
-
-        // Listen for guided meditation completion
-        _guidedMeditationPlayer.onPlayerComplete.listen((event) {
-          // When guided meditation completes, complete the timer automatically
-          if (mounted) {
-            _onTimerComplete();
-          }
-        });
-      } catch (e) {}
-    }
-  }
-
   Future<void> _seekGuidedMeditationTo(Duration position) async {
-    if (widget.selectedAudio == null) return;
-
     try {
-      final state = _guidedMeditationPlayer.state;
-
       // If player is not in a state that allows seeking, restart and seek
-      if (state != PlayerState.playing && state != PlayerState.paused) {
-        final audioPath = _guidedMeditationAudios[widget.selectedAudio!]!;
-        await _guidedMeditationPlayer.setPlayerMode(PlayerMode.mediaPlayer);
-        await _guidedMeditationPlayer.play(AssetSource(audioPath));
-        // Wait a bit for the player to be ready
-        await Future.delayed(Duration(milliseconds: 100));
-      }
-
-      await _guidedMeditationPlayer.seek(position);
     } catch (e) {}
   }
 
@@ -144,9 +96,6 @@ class _TimerPageState extends ConsumerState<TimerPage>
     setState(() => paused = false);
 
     // Resume guided meditation audio if it was paused
-    if (widget.selectedAudio != null) {
-      _guidedMeditationPlayer.resume();
-    }
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       _updateRemainingTime();
@@ -201,9 +150,6 @@ class _TimerPageState extends ConsumerState<TimerPage>
     setState(() => paused = true);
 
     // Pause guided meditation audio if playing
-    if (widget.selectedAudio != null) {
-      _guidedMeditationPlayer.pause();
-    }
 
     // Cancel and reschedule notification when paused
     _cancelScheduledNotification();
@@ -213,9 +159,6 @@ class _TimerPageState extends ConsumerState<TimerPage>
     _timer?.cancel();
 
     // Stop and restart guided meditation audio
-    if (widget.selectedAudio != null) {
-      _guidedMeditationPlayer.stop();
-    }
 
     setState(() {
       paused = false;
@@ -231,9 +174,6 @@ class _TimerPageState extends ConsumerState<TimerPage>
     _cancelScheduledNotification();
     _startTimer();
 
-    // Restart guided meditation if selected
-    _startGuidedMeditationIfSelected();
-
     _scheduleCompletionNotification();
   }
 
@@ -242,9 +182,6 @@ class _TimerPageState extends ConsumerState<TimerPage>
     _player.stop();
 
     // Stop guided meditation audio
-    if (widget.selectedAudio != null) {
-      _guidedMeditationPlayer.stop();
-    }
 
     // Cancel scheduled notification
     _cancelScheduledNotification();
@@ -277,17 +214,13 @@ class _TimerPageState extends ConsumerState<TimerPage>
     }
 
     // Only play timer ending sound if no guided meditation is selected
-    if (widget.selectedAudio == null) {
-      String audioname = SettingsHiveDB.getTimerSound();
-      await _player.play(AssetSource(audioname), volume: 8);
 
-      _player.onPlayerComplete.listen((event) {
-        _navigateToFeed();
-      });
-    } else {
-      // If guided meditation was playing, navigate directly to feed
+    String audioname = SettingsHiveDB.getTimerSound();
+    await _player.play(AssetSource(audioname), volume: 8);
+
+    _player.onPlayerComplete.listen((event) {
       _navigateToFeed();
-    }
+    });
   }
 
   void _navigateToFeed() {
@@ -315,7 +248,7 @@ class _TimerPageState extends ConsumerState<TimerPage>
     _timer?.cancel();
     _starController.dispose();
     _player.dispose();
-    _guidedMeditationPlayer.dispose();
+
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -364,7 +297,7 @@ class _TimerPageState extends ConsumerState<TimerPage>
               children: [
                 const SizedBox(height: 150),
 
-                if (paused && widget.selectedAudio == null)
+                if (paused)
                   Text(
                     "Paused",
                     style: Theme.of(context).textTheme.labelMedium,
@@ -405,71 +338,6 @@ class _TimerPageState extends ConsumerState<TimerPage>
 
                 const SizedBox(height: 120),
 
-                widget.selectedAudio != null
-                    ? Container(
-                        padding: EdgeInsets.symmetric(horizontal: 20),
-                        child: Column(
-                          children: [
-                            SizedBox(height: 10),
-                            Slider(
-                              value:
-                                  (_initialDuration.inSeconds -
-                                          _remaining.inSeconds)
-                                      .toDouble(),
-                              min: 0,
-                              max: _initialDuration.inSeconds.toDouble(),
-                              divisions: _initialDuration.inSeconds,
-                              activeColor:
-                                  SettingsHiveDB.getTimerBG() == 'default'
-                                  ? Colors.black87
-                                  : Colors.white,
-                              inactiveColor:
-                                  SettingsHiveDB.getTimerBG() == 'default'
-                                  ? Colors.black26
-                                  : Colors.white30,
-                              onChanged: (value) {
-                                setState(() {
-                                  _remaining =
-                                      _initialDuration -
-                                      Duration(seconds: value.toInt());
-                                  // Update timer start time to match the scrubber position
-                                  _timerStartTime = DateTime.now().subtract(
-                                    Duration(seconds: value.toInt()),
-                                  );
-                                  _totalPausedTime = Duration.zero;
-                                });
-
-                                // Seek the guided meditation audio to match the scrubber position
-                                _seekGuidedMeditationTo(
-                                  Duration(seconds: value.toInt()),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      )
-                    : Container(),
-                if (widget.selectedAudio != null) ...[
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      color: SettingsHiveDB.getTimerBG() == 'default'
-                          ? Colors.black.withOpacity(0.8)
-                          : Colors.white.withOpacity(0.2),
-                    ),
-                    child: Text(
-                      paused
-                          ? "⏸️ Guided ${widget.selectedAudio} Meditation Paused"
-                          : "🎧 Guided ${widget.selectedAudio} Meditation Playing",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 50),
 
                 // Control buttons

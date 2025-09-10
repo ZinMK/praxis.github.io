@@ -126,6 +126,7 @@ class _CalendarPageState extends State<CalendarPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
           "Calendar",
@@ -141,7 +142,6 @@ class _CalendarPageState extends State<CalendarPage> {
         valueListenable: MeditationDayHiveDB.meditationDays.listenable(),
         builder: (context, box, _) {
           final completedDays = getCompletedDays();
-
           final monthlyProgress = getMonthlyProgress(completedDays);
           final progressPercentage = (monthlyProgress * 100).toInt();
 
@@ -174,6 +174,7 @@ class _CalendarPageState extends State<CalendarPage> {
                   ],
                 ),
               ),
+
               TableCalendar(
                 calendarStyle: CalendarStyle(
                   selectedTextStyle: Theme.of(context).textTheme.labelMedium!,

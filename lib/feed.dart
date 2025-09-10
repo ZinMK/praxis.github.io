@@ -28,9 +28,8 @@ double iconSize = 28;
 class _FeedPageState extends ConsumerState<FeedPage> {
   @override
   Widget build(BuildContext context) {
-    final totalHeight = MediaQuery.of(context).size.height;
-    final childCount = 6; // how many main children
-    final spacing = totalHeight / (childCount + 1);
+    // final totalHeight = MediaQuery.of(context).size.height;
+    // final childCount = 6; // how many main children
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -176,16 +175,8 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                     child: ValueListenableBuilder(
                       valueListenable: Hive.box('messages').listenable(),
                       builder: (context, value, child) {
-                        var data = HiveMessagesClass.getRandomMessageWithKey();
-                        return GestureDetector(
-                          onTap: () {},
-                          child: InfoTab(
-                            input: data!["data"]['message'],
-                            textColor: const Color.fromARGB(255, 92, 7, 1),
-                            outsideColor: Color.fromARGB(255, 249, 223, 156),
-                            insideColor: Theme.of(context).hintColor,
-                          ),
-                        );
+                        final box = Hive.box('messages');
+                        return _RandomMessageTile(key: ValueKey(box.length));
                       },
                     ),
                   ),
@@ -359,6 +350,61 @@ class _FeedPageState extends ConsumerState<FeedPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _RandomMessageTile extends StatefulWidget {
+  const _RandomMessageTile({super.key});
+  @override
+  State<_RandomMessageTile> createState() => _RandomMessageTileState();
+}
+
+class _RandomMessageTileState extends State<_RandomMessageTile> {
+  String _currentMessage =
+      "Welcome to the App! you can add messages for yourself that will appear here.";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitial();
+  }
+
+  void _loadInitial() {
+    // If there are messages, pick a random one; if none, show welcome text
+    final random = HiveMessagesClass.getRandomMessageWithKeyExcluding(1);
+    if (random != null) {
+      setState(() {
+        _currentMessage = random['data']['message'];
+      });
+    } else {
+      // If no messages exist, set the welcome message key
+      setState(() {
+        _currentMessage =
+            "Welcome to the App! you can add messages for yourself that will appear here.";
+      });
+    }
+  }
+
+  void _nextRandom() {
+    final next = HiveMessagesClass.getRandomMessageWithKeyExcluding(1);
+    if (next != null) {
+      setState(() {
+        _currentMessage = next['data']['message'];
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _nextRandom,
+      child: InfoTab(
+        input: _currentMessage,
+        textColor: const Color.fromARGB(255, 92, 7, 1),
+        outsideColor: const Color.fromARGB(255, 249, 223, 156),
+        insideColor: Theme.of(context).hintColor,
       ),
     );
   }

@@ -16,8 +16,8 @@ void main() async {
 
   await Hive.openBox("meditation");
   await Hive.openBox("settings");
-
   await Hive.openBox("messages");
+
   HiveMessagesClass.addMessage(
     "Welcome to the App! You can add messages for yourself that will appear here randomly.",
   );

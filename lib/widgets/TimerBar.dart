@@ -29,11 +29,18 @@ TimeOfDay intToTimeOfDay(int time) {
 }
 
 class _TimerBarState extends ConsumerState<TimerBar> {
-  late TimeOfDay fromTime;
-  late TimeOfDay toTime;
+  TimeOfDay fromTime = TimeOfDay.now();
+  TimeOfDay toTime = TimeOfDay.now();
   bool _isExpanded = false;
   String? _selectedAudio;
   final AudioPlayer _audioPlayer = AudioPlayer();
+  int _selectedDurationHours = 0;
+  int _selectedDurationMinutes = 0;
+  bool _hasUserSetCustomDuration = false;
+
+  // Day-specific times (for today only)
+  TimeOfDay? _todayFromTime;
+  TimeOfDay? _todayToTime;
 
   // Available guided meditation audio files with their durations (in minutes)
   final Map<String, Map<String, dynamic>> _guidedMeditationAudios = {
@@ -63,12 +70,50 @@ class _TimerBarState extends ConsumerState<TimerBar> {
   void initState() {
     super.initState();
     _selectedAudio = 'None (Manual Timer)'; // Default to manual timer
+
+    // Initialize time values
+    if (widget.meditationslot == MeditationSlot.morning) {
+      fromTime = intToTimeOfDay(SettingsHiveDB.getMorningTime()[0]);
+      toTime = intToTimeOfDay(SettingsHiveDB.getMorningTime()[1]);
+    } else {
+      fromTime = intToTimeOfDay(SettingsHiveDB.getEveningTime()[0]);
+      toTime = intToTimeOfDay(SettingsHiveDB.getEveningTime()[1]);
+    }
+
+    // Load day-specific times if they exist
+    _loadTodaySpecificTimes();
+  }
+
+  void _loadTodaySpecificTimes() {
+    // Load day-specific times from database
+    if (widget.meditationslot == MeditationSlot.morning) {
+      final times = MeditationDayHiveDB.getTodayMorningTimes();
+      if (times[0] != null && times[1] != null) {
+        _todayFromTime = intToTimeOfDay(times[0]!);
+        _todayToTime = intToTimeOfDay(times[1]!);
+      }
+    } else {
+      final times = MeditationDayHiveDB.getTodayEveningTimes();
+      if (times[0] != null && times[1] != null) {
+        _todayFromTime = intToTimeOfDay(times[0]!);
+        _todayToTime = intToTimeOfDay(times[1]!);
+      }
+    }
   }
 
   @override
   void dispose() {
     _audioPlayer.dispose();
     super.dispose();
+  }
+
+  bool get isTimePassed {
+    final now = TimeOfDay.now();
+    final currentTimeMinutes = now.hour * 60 + now.minute;
+    final effectiveFromTime = _todayFromTime ?? fromTime;
+    final beginTimeMinutes =
+        effectiveFromTime.hour * 60 + effectiveFromTime.minute;
+    return currentTimeMinutes >= beginTimeMinutes;
   }
 
   Duration get duration {
@@ -80,9 +125,37 @@ class _TimerBarState extends ConsumerState<TimerBar> {
       }
     }
 
-    // Otherwise use the time range duration
-    final from = DateTime(2025, 1, 1, fromTime.hour, fromTime.minute);
-    DateTime to = DateTime(2025, 1, 1, toTime.hour, toTime.minute);
+    // If time has passed, use custom duration if set, otherwise default to 1 hour
+    if (isTimePassed) {
+      if (_hasUserSetCustomDuration) {
+        return Duration(
+          hours: _selectedDurationHours,
+          minutes: _selectedDurationMinutes,
+        );
+      } else {
+        // Default to 1 hour when time has passed
+        return Duration(hours: 1);
+      }
+    }
+
+    // Otherwise use the effective time range duration (day-specific or scheduled)
+    final effectiveFromTime = _todayFromTime ?? fromTime;
+    final effectiveToTime = _todayToTime ?? toTime;
+
+    final from = DateTime(
+      2025,
+      1,
+      1,
+      effectiveFromTime.hour,
+      effectiveFromTime.minute,
+    );
+    DateTime to = DateTime(
+      2025,
+      1,
+      1,
+      effectiveToTime.hour,
+      effectiveToTime.minute,
+    );
 
     // If end time is earlier than start time, it means it's on the next day
     if (to.isBefore(from)) {
@@ -94,6 +167,7 @@ class _TimerBarState extends ConsumerState<TimerBar> {
 
   void markAsDone() {
     setState(() {
+      // Always save the current duration (either default scheduled duration or custom selected duration)
       if (widget.meditationslot == MeditationSlot.morning) {
         MeditationDayHiveDB.updateMorningAsComplete(duration.inMinutes);
       } else {
@@ -126,14 +200,16 @@ class _TimerBarState extends ConsumerState<TimerBar> {
     _stopAudioPreview();
   }
 
-  Future _openEditSheet() async {
+  Future _openTimeEditSheet() async {
     await showCupertinoModalPopup(
       context: context,
       builder: (context) {
-        // Set default to current time
-        final now = TimeOfDay.now();
-        TimeOfDay tempFrom = now;
-        TimeOfDay tempTo = now;
+        // Use day-specific times if they exist, otherwise use scheduled times
+        final currentFromTime = _todayFromTime ?? fromTime;
+        final currentToTime = _todayToTime ?? toTime;
+
+        TimeOfDay tempFrom = currentFromTime;
+        TimeOfDay tempTo = currentToTime;
         bool isAdjustingFromTime = true;
 
         return Material(
@@ -161,8 +237,8 @@ class _TimerBarState extends ConsumerState<TimerBar> {
                         children: [
                           Text(
                             isAdjustingFromTime
-                                ? "Set Start Time"
-                                : "Set End Time",
+                                ? "Set Start Time (Today Only)"
+                                : "Set End Time (Today Only)",
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
@@ -174,25 +250,10 @@ class _TimerBarState extends ConsumerState<TimerBar> {
                             child: Text("Save"),
                             onPressed: () {
                               setState(() {
-                                fromTime = tempFrom;
-                                toTime = tempTo;
-
-                                if (widget.meditationslot ==
-                                    MeditationSlot.morning) {
-                                  SettingsHiveDB.updateMorningStartTime(
-                                    fromTime.hour * 100 + fromTime.minute,
-                                  );
-                                  SettingsHiveDB.updateMorningEndTime(
-                                    toTime.hour * 100 + toTime.minute,
-                                  );
-                                } else {
-                                  SettingsHiveDB.updateEveningStartTime(
-                                    fromTime.hour * 100 + fromTime.minute,
-                                  );
-                                  SettingsHiveDB.updateEveningEndTime(
-                                    toTime.hour * 100 + toTime.minute,
-                                  );
-                                }
+                                _todayFromTime = tempFrom;
+                                _todayToTime = tempTo;
+                                // Save to database (this would need to be implemented)
+                                _saveTodaySpecificTimes();
                               });
                               Navigator.pop(context);
                             },
@@ -200,10 +261,8 @@ class _TimerBarState extends ConsumerState<TimerBar> {
                         ],
                       ),
                       SizedBox(height: 20),
-
                       SizedBox(
                         height: 100,
-
                         child: CupertinoDatePicker(
                           mode: CupertinoDatePickerMode.time,
                           initialDateTime: DateTime(
@@ -252,6 +311,148 @@ class _TimerBarState extends ConsumerState<TimerBar> {
     );
   }
 
+  void _saveTodaySpecificTimes() {
+    // Save day-specific times to database
+    if (_todayFromTime != null && _todayToTime != null) {
+      if (widget.meditationslot == MeditationSlot.morning) {
+        MeditationDayHiveDB.updateTodayMorningTimes(
+          _todayFromTime!.hour * 100 + _todayFromTime!.minute,
+          _todayToTime!.hour * 100 + _todayToTime!.minute,
+        );
+      } else {
+        MeditationDayHiveDB.updateTodayEveningTimes(
+          _todayFromTime!.hour * 100 + _todayFromTime!.minute,
+          _todayToTime!.hour * 100 + _todayToTime!.minute,
+        );
+      }
+    }
+  }
+
+  Future _openDurationSheet() async {
+    await showCupertinoModalPopup(
+      context: context,
+      builder: (context) {
+        // Initialize with custom duration if set, otherwise default to 1 hour
+        int defaultHours = _selectedDurationHours;
+        int defaultMinutes = _selectedDurationMinutes;
+
+        if (!_hasUserSetCustomDuration) {
+          // Default to 1 hour when time has passed
+          defaultHours = 1;
+          defaultMinutes = 0;
+        }
+
+        int tempHours = defaultHours;
+        int tempMinutes = defaultMinutes;
+
+        return Material(
+          borderRadius: BorderRadius.circular(30),
+          color: Theme.of(context).scaffoldBackgroundColor,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 20,
+                right: 20,
+                top: 20,
+              ),
+              child: StatefulBuilder(
+                builder: (context, setModalState) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Set Duration",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: CupertinoColors.label,
+                            ),
+                          ),
+                          CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            child: Text("Save"),
+                            onPressed: () {
+                              setState(() {
+                                _selectedDurationHours = tempHours;
+                                _selectedDurationMinutes = tempMinutes;
+                                _hasUserSetCustomDuration = true;
+                              });
+                              Navigator.pop(context);
+                            },
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 20),
+                      SizedBox(
+                        height: 100,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: CupertinoPicker(
+                                itemExtent: 32,
+                                scrollController: FixedExtentScrollController(
+                                  initialItem: tempHours,
+                                ),
+                                onSelectedItemChanged: (index) {
+                                  setModalState(() {
+                                    tempHours = index;
+                                  });
+                                },
+                                children: List.generate(24, (index) {
+                                  return Center(
+                                    child: Text(
+                                      "${index}h",
+                                      style: TextStyle(fontSize: 16),
+                                    ),
+                                  );
+                                }),
+                              ),
+                            ),
+                            Expanded(
+                              child: CupertinoPicker(
+                                itemExtent: 32,
+                                scrollController: FixedExtentScrollController(
+                                  initialItem: tempMinutes ~/ 5,
+                                ),
+                                onSelectedItemChanged: (index) {
+                                  setModalState(() {
+                                    tempMinutes =
+                                        index * 5; // 5-minute intervals
+                                  });
+                                },
+                                children: List.generate(12, (index) {
+                                  return Center(
+                                    child: Text(
+                                      "${index * 5}m",
+                                      style: TextStyle(fontSize: 16),
+                                    ),
+                                  );
+                                }),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     bool iscompleted;
@@ -263,12 +464,12 @@ class _TimerBarState extends ConsumerState<TimerBar> {
     }
 
     return GestureDetector(
-      onLongPress: _openEditSheet,
-      onTap: () {
-        setState(() {
-          _isExpanded = !_isExpanded;
-        });
-      },
+      onTap: isTimePassed
+          ? !iscompleted
+                ? _openDurationSheet
+                : null
+          : _openTimeEditSheet,
+
       child: AnimatedContainer(
         duration: Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -289,6 +490,7 @@ class _TimerBarState extends ConsumerState<TimerBar> {
               ValueListenableBuilder(
                 valueListenable: Hive.box('settings').listenable(),
                 builder: (context, value, child) {
+                  // Update time values when settings change
                   if (widget.meditationslot == MeditationSlot.morning) {
                     fromTime = intToTimeOfDay(
                       SettingsHiveDB.getMorningTime()[0],
@@ -300,8 +502,14 @@ class _TimerBarState extends ConsumerState<TimerBar> {
                     );
                     toTime = intToTimeOfDay(SettingsHiveDB.getEveningTime()[1]);
                   }
+                  // Use effective times (day-specific or scheduled)
+                  final effectiveFromTime = _todayFromTime ?? fromTime;
+                  final effectiveToTime = _todayToTime ?? toTime;
+
                   return Text(
-                    "${fromTime.format(context).toLowerCase().replaceAll(" ", '')} - ${toTime.format(context).toLowerCase().replaceAll(" ", '')}",
+                    isTimePassed
+                        ? "${widget.meditationslot == MeditationSlot.morning ? 'Morning' : 'Evening'} Meditation"
+                        : "${effectiveFromTime.format(context).toLowerCase().replaceAll(" ", '')} - ${effectiveToTime.format(context).toLowerCase().replaceAll(" ", '')}",
                     style: Theme.of(
                       context,
                     ).textTheme.labelMedium!.copyWith(color: Colors.white),
@@ -528,12 +736,6 @@ class _TimerBarState extends ConsumerState<TimerBar> {
                                         ) => TimerPage(
                                           duration: duration,
                                           slot: widget.meditationslot,
-                                          selectedAudio:
-                                              _selectedAudio !=
-                                                  'None (Manual Timer)'
-                                              ? _guidedMeditationAudios[_selectedAudio]!['displayName']
-                                                    .toString()
-                                              : null,
                                         ),
                                     transitionsBuilder:
                                         (

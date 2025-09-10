@@ -11,7 +11,7 @@ class SettingsHiveDB {
         "morningEndTime": 1000,
         "eveningStartTime": 1700,
         "eveningEndTime": 1800,
-        "timersound": "goenkaji_chant.mp3",
+        "timersound": "Wave",
         "timerbackground": "default",
         "notifications": true,
       },
