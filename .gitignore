@@ -33,6 +33,28 @@ migrate_working_dir/
 .pub/
 /build/
 
+# Build directories
+build/
+**/build/
+android/build/
+ios/build/
+macos/build/
+linux/build/
+windows/build/
+
+# Additional build artifacts
+*.apk
+*.aab
+*.ipa
+*.dmg
+*.exe
+*.app
+*.framework
+*.xcarchive
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
 # Symbolication related
 app.*.symbols
 
@@ -43,3 +65,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Assets - only track the zip file, ignore individual files
+assets/*
+!assets/assets.zip
