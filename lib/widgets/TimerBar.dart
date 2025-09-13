@@ -455,6 +455,7 @@ class _TimerBarState extends ConsumerState<TimerBar> {
 
   @override
   Widget build(BuildContext context) {
+    double totalheight = MediaQuery.of(context).size.height;
     bool iscompleted;
 
     if (widget.meditationslot == MeditationSlot.morning) {
@@ -477,7 +478,7 @@ class _TimerBarState extends ConsumerState<TimerBar> {
         width: 9999,
 
         /// alignment: Alignment.topCenter,
-        height: _isExpanded ? 250 : 130,
+        height: totalheight * 0.15,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           color: Theme.of(context).hintColor,

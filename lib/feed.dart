@@ -28,7 +28,7 @@ double iconSize = 28;
 class _FeedPageState extends ConsumerState<FeedPage> {
   @override
   Widget build(BuildContext context) {
-    // final totalHeight = MediaQuery.of(context).size.height;
+    final totalHeight = MediaQuery.of(context).size.height;
     // final childCount = 6; // how many main children
 
     return Scaffold(
@@ -37,9 +37,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
         padding: EdgeInsets.all(UniversalPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            SizedBox(height: MediaQuery.of(context).size.height * 0.07),
+            SizedBox(height: totalHeight * 0.05),
             Text(
               'You meditated for',
               style: Theme.of(context).textTheme.labelMedium!.copyWith(
@@ -47,7 +47,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
               ),
               overflow: TextOverflow.visible,
             ),
-            SizedBox(height: MediaQuery.of(context).size.height * 0.01),
+            SizedBox(height: totalHeight * 0.01),
             //Top Section
             ValueListenableBuilder(
               valueListenable: Hive.box("meditation").listenable(),
@@ -64,7 +64,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                         },
                       ),
                     ),
-                    SizedBox(width: 20),
+                    SizedBox(width: totalHeight * 0.02),
                     Expanded(
                       child: InfoTab(
                         input:
@@ -75,7 +75,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                 );
               },
             ),
-            SizedBox(height: MediaQuery.of(context).size.height * 0.02),
+            SizedBox(height: totalHeight * 0.02),
 
             // Today Section
             //
@@ -143,7 +143,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
               ],
             ),
 
-            SizedBox(height: MediaQuery.of(context).size.height * 0.01),
+            SizedBox(height: totalHeight * 0.01),
             Flexible(
               child: ListView(
                 padding: EdgeInsets.all(0),
@@ -169,9 +169,9 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                       color: Theme.of(context).focusColor,
                     ),
                   ),
-                  SizedBox(height: MediaQuery.of(context).size.height * 0.01),
+                  SizedBox(height: totalHeight * 0.01),
                   SizedBox(
-                    height: 150,
+                    height: totalHeight * 0.2,
                     child: ValueListenableBuilder(
                       valueListenable: Hive.box('messages').listenable(),
                       builder: (context, value, child) {
@@ -180,7 +180,7 @@ class _FeedPageState extends ConsumerState<FeedPage> {
                       },
                     ),
                   ),
-                  SizedBox(height: MediaQuery.of(context).size.height * 0.01),
+                  SizedBox(height: totalHeight * 0.01),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
 

@@ -151,12 +151,21 @@ class MeditationDayHiveDB {
     int sumMinutes = 0;
 
     for (var entry in meditationDays.values) {
-      final data = Map<String, dynamic>.from(entry);
+      // Skip non-map entries (like strings)
+      if (entry is! Map) continue;
 
-      int morning = data['morningDuration'] ?? 0;
-      int evening = data['eveningDuration'] ?? 0;
+      try {
+        final data = Map<String, dynamic>.from(entry);
 
-      sumMinutes += morning + evening;
+        int morning = data['morningDuration'] ?? 0;
+        int evening = data['eveningDuration'] ?? 0;
+
+        sumMinutes += morning + evening;
+      } catch (e) {
+        // Skip entries that can't be converted to the expected format
+        print('Skipping invalid entry: $entry');
+        continue;
+      }
     }
 
     return sumMinutes;
@@ -191,18 +200,23 @@ class MeditationDayHiveDB {
   static int getTotalMeditationDays() {
     int sum_Complete_days = 0;
     for (int i = 0; i < meditationDays.length; i++) {
-      Map<dynamic, dynamic> entry = meditationDays.get(
-        meditationDays.keys.toList()[i],
-        defaultValue: {
-          'morningCompleted': false,
-          'eveningCompleted': false,
-          'morningDuration': 0,
-          'eveningDuration': 0,
-        },
-      );
+      final key = meditationDays.keys.toList()[i];
+      final entry = meditationDays.get(key);
 
-      if (entry['morningCompleted'] && entry['eveningCompleted']) {
-        sum_Complete_days += 1;
+      // Skip non-map entries (like strings)
+      if (entry is! Map) continue;
+
+      try {
+        final data = Map<String, dynamic>.from(entry);
+
+        if (data['morningCompleted'] == true &&
+            data['eveningCompleted'] == true) {
+          sum_Complete_days += 1;
+        }
+      } catch (e) {
+        // Skip entries that can't be converted to the expected format
+        print('Skipping invalid entry for day count: $entry');
+        continue;
       }
     }
     return sum_Complete_days;
