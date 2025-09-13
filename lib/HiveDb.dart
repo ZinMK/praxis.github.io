@@ -222,6 +222,34 @@ class MeditationDayHiveDB {
     return sum_Complete_days;
   }
 
+  // Format meditation days to larger units (days -> months -> years)
+  static String formatMeditationDays(int totalDays) {
+    if (totalDays >= 365) {
+      final years = (totalDays / 365).round();
+      return years == 1 ? "1 year" : "$years years";
+    } else if (totalDays >= 30) {
+      final months = (totalDays / 30).round();
+      return months == 1 ? "1 month" : "$months months";
+    } else {
+      return totalDays == 1 ? "1 day" : "$totalDays days";
+    }
+  }
+
+  // Format meditation hours to smaller units (hours -> days -> weeks)
+  static String formatMeditationHours(int totalHours) {
+    if (totalHours >= 168) {
+      // 1 week = 168 hours
+      final weeks = (totalHours / 168).round();
+      return weeks == 1 ? "1 week" : "$weeks weeks";
+    } else if (totalHours >= 24) {
+      // 1 day = 24 hours
+      final days = (totalHours / 24).round();
+      return days == 1 ? "1 day" : "$days days";
+    } else {
+      return totalHours == 1 ? "1 hour" : "$totalHours hours";
+    }
+  }
+
   // Day-specific time methods
   static Future<void> updateTodayMorningTimes(
     int startTime,

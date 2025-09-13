@@ -45,17 +45,28 @@ class _CalendarPageState extends State<CalendarPage> {
     final completedDays = <DateTime>{};
 
     for (var key in MeditationDayHiveDB.meditationDays.keys) {
+      // Skip non-date keys (like 'lastAppDate')
+      if (key is! String || !key.contains('T')) continue;
+
       final entry = MeditationDayHiveDB.meditationDays.get(
         key,
         defaultValue: {'morningCompleted': false, 'eveningCompleted': false},
       );
 
-      if (entry['morningCompleted'] == true &&
-          entry['eveningCompleted'] == true) {
-        final parsedDate = DateTime.parse(key.toString());
-        completedDays.add(
-          DateTime(parsedDate.year, parsedDate.month, parsedDate.day),
-        );
+      // Skip non-map entries
+      if (entry is! Map) continue;
+
+      try {
+        if (entry['morningCompleted'] == true &&
+            entry['eveningCompleted'] == true) {
+          final parsedDate = DateTime.parse(key);
+          completedDays.add(
+            DateTime(parsedDate.year, parsedDate.month, parsedDate.day),
+          );
+        }
+      } catch (e) {
+        // Skip entries that can't be parsed as dates
+        continue;
       }
     }
 

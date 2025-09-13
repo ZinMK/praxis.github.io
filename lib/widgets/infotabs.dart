@@ -15,8 +15,10 @@ class InfoTab extends StatelessWidget {
   double tabBorderRadius = 20;
   @override
   Widget build(BuildContext context) {
+    double height = MediaQuery.of(context).size.height;
+    double width = MediaQuery.of(context).size.width;
     return Container(
-      // height: 100,
+      height: height * 0.1,
       decoration: BoxDecoration(
         shape: BoxShape.rectangle,
         borderRadius: BorderRadius.circular(tabBorderRadius),
@@ -34,7 +36,7 @@ class InfoTab extends StatelessWidget {
           ),
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(width * 0.03),
               child: SingleChildScrollView(
                 child: Text(
                   maxLines: 5,
@@ -42,7 +44,7 @@ class InfoTab extends StatelessWidget {
                   input,
                   style: Theme.of(context).textTheme.labelMedium!.copyWith(
                     color: textColor ?? Colors.white,
-                    fontSize: 20,
+                    fontSize: width * 0.05,
                   ),
                 ),
               ),

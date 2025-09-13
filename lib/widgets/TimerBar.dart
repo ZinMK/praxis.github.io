@@ -213,96 +213,101 @@ class _TimerBarState extends ConsumerState<TimerBar> {
         bool isAdjustingFromTime = true;
 
         return Material(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(20),
           color: Theme.of(context).scaffoldBackgroundColor,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 20,
-                right: 20,
-                top: 20,
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.30,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: BorderRadius.circular(20),
               ),
-              child: StatefulBuilder(
-                builder: (context, setModalState) {
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            isAdjustingFromTime
-                                ? "Set Start Time (Today Only)"
-                                : "Set End Time (Today Only)",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: CupertinoColors.label,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                  left: 16,
+                  right: 16,
+                  top: 16,
+                ),
+                child: StatefulBuilder(
+                  builder: (context, setModalState) {
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                isAdjustingFromTime
+                                    ? "Set Start Time (Today Only)"
+                                    : "Set End Time (Today Only)",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: CupertinoColors.label,
+                                ),
+                              ),
                             ),
-                          ),
-                          CupertinoButton(
-                            padding: EdgeInsets.zero,
-                            child: Text("Save"),
-                            onPressed: () {
-                              setState(() {
-                                _todayFromTime = tempFrom;
-                                _todayToTime = tempTo;
-                                // Save to database (this would need to be implemented)
-                                _saveTodaySpecificTimes();
+                            CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              child: Text("Save"),
+                              onPressed: () {
+                                setState(() {
+                                  _todayFromTime = tempFrom;
+                                  _todayToTime = tempTo;
+                                  // Save to database (this would need to be implemented)
+                                  _saveTodaySpecificTimes();
+                                });
+                                Navigator.pop(context);
+                              },
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 5),
+                        SizedBox(
+                          height: 80,
+                          child: CupertinoDatePicker(
+                            mode: CupertinoDatePickerMode.time,
+                            initialDateTime: DateTime(
+                              2023,
+                              1,
+                              1,
+                              isAdjustingFromTime ? tempFrom.hour : tempTo.hour,
+                              isAdjustingFromTime
+                                  ? tempFrom.minute
+                                  : tempTo.minute,
+                            ),
+                            onDateTimeChanged: (dateTime) {
+                              setModalState(() {
+                                if (isAdjustingFromTime) {
+                                  tempFrom = TimeOfDay(
+                                    hour: dateTime.hour,
+                                    minute: dateTime.minute,
+                                  );
+                                } else {
+                                  tempTo = TimeOfDay(
+                                    hour: dateTime.hour,
+                                    minute: dateTime.minute,
+                                  );
+                                }
                               });
-                              Navigator.pop(context);
                             },
                           ),
-                        ],
-                      ),
-                      SizedBox(height: 20),
-                      SizedBox(
-                        height: 100,
-                        child: CupertinoDatePicker(
-                          mode: CupertinoDatePickerMode.time,
-                          initialDateTime: DateTime(
-                            2023,
-                            1,
-                            1,
-                            isAdjustingFromTime ? tempFrom.hour : tempTo.hour,
-                            isAdjustingFromTime
-                                ? tempFrom.minute
-                                : tempTo.minute,
-                          ),
-                          onDateTimeChanged: (dateTime) {
+                        ),
+
+                        CupertinoButton(
+                          child: Text(isAdjustingFromTime ? "Next" : "Back"),
+                          onPressed: () {
                             setModalState(() {
-                              if (isAdjustingFromTime) {
-                                tempFrom = TimeOfDay(
-                                  hour: dateTime.hour,
-                                  minute: dateTime.minute,
-                                );
-                              } else {
-                                tempTo = TimeOfDay(
-                                  hour: dateTime.hour,
-                                  minute: dateTime.minute,
-                                );
-                              }
+                              isAdjustingFromTime = !isAdjustingFromTime;
                             });
                           },
                         ),
-                      ),
-                      SizedBox(height: 20),
-                      CupertinoButton(
-                        child: Text(isAdjustingFromTime ? "Next" : "Back"),
-                        onPressed: () {
-                          setModalState(() {
-                            isAdjustingFromTime = !isAdjustingFromTime;
-                          });
-                        },
-                      ),
-                    ],
-                  );
-                },
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -346,19 +351,19 @@ class _TimerBarState extends ConsumerState<TimerBar> {
         int tempMinutes = defaultMinutes;
 
         return Material(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(20),
           color: Theme.of(context).scaffoldBackgroundColor,
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: BorderRadius.circular(30),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 20,
-                right: 20,
-                top: 20,
+                left: 16,
+                right: 16,
+                top: 16,
               ),
               child: StatefulBuilder(
                 builder: (context, setModalState) {
@@ -371,7 +376,7 @@ class _TimerBarState extends ConsumerState<TimerBar> {
                           Text(
                             "Set Duration",
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: CupertinoColors.label,
                             ),
@@ -390,14 +395,14 @@ class _TimerBarState extends ConsumerState<TimerBar> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 20),
+                      SizedBox(height: 12),
                       SizedBox(
-                        height: 100,
+                        height: 80,
                         child: Row(
                           children: [
                             Expanded(
                               child: CupertinoPicker(
-                                itemExtent: 32,
+                                itemExtent: 28,
                                 scrollController: FixedExtentScrollController(
                                   initialItem: tempHours,
                                 ),
@@ -410,7 +415,7 @@ class _TimerBarState extends ConsumerState<TimerBar> {
                                   return Center(
                                     child: Text(
                                       "${index}h",
-                                      style: TextStyle(fontSize: 16),
+                                      style: TextStyle(fontSize: 14),
                                     ),
                                   );
                                 }),
@@ -418,7 +423,7 @@ class _TimerBarState extends ConsumerState<TimerBar> {
                             ),
                             Expanded(
                               child: CupertinoPicker(
-                                itemExtent: 32,
+                                itemExtent: 28,
                                 scrollController: FixedExtentScrollController(
                                   initialItem: tempMinutes ~/ 5,
                                 ),
@@ -432,7 +437,7 @@ class _TimerBarState extends ConsumerState<TimerBar> {
                                   return Center(
                                     child: Text(
                                       "${index * 5}m",
-                                      style: TextStyle(fontSize: 16),
+                                      style: TextStyle(fontSize: 14),
                                     ),
                                   );
                                 }),
@@ -441,7 +446,7 @@ class _TimerBarState extends ConsumerState<TimerBar> {
                           ],
                         ),
                       ),
-                      SizedBox(height: 20),
+                      SizedBox(height: 12),
                     ],
                   );
                 },
@@ -511,9 +516,10 @@ class _TimerBarState extends ConsumerState<TimerBar> {
                     isTimePassed
                         ? "${widget.meditationslot == MeditationSlot.morning ? 'Morning' : 'Evening'} Meditation"
                         : "${effectiveFromTime.format(context).toLowerCase().replaceAll(" ", '')} - ${effectiveToTime.format(context).toLowerCase().replaceAll(" ", '')}",
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelMedium!.copyWith(color: Colors.white),
+                    style: Theme.of(context).textTheme.labelMedium!.copyWith(
+                      fontSize: MediaQuery.of(context).size.width * 0.06,
+                      color: Colors.white,
+                    ),
                   );
                 },
               ),

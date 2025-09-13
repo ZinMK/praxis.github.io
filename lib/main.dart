@@ -22,9 +22,8 @@ void main() async {
   // Check if day has changed and reset day-specific times if needed
   await MeditationDayHiveDB.checkAndResetDaySpecificTimes();
 
-  HiveMessagesClass.addMessage(
-    "Welcome to the App! You can add messages for yourself that will appear here randomly.",
-  );
+  // Initialize welcome message only if no messages exist
+  HiveMessagesClass.initializeWelcomeMessage();
 
   // Initialize notification service
   await NotificationService().initialize();
